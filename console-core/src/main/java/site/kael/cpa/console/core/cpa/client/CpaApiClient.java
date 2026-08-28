@@ -303,7 +303,7 @@ public class CpaApiClient {
         JsonNode upstream = callManagementApi(referenceId, "GET", host + "/api/monitor/usage/quota/limit",
                 Map.of("Authorization", "$TOKEN$", "Content-Type", "application/json", "Accept", "application/json",
                         "Accept-Language", "en-US,en"), "", timeout);
-        LOGGER.info("Zhipu quota upstream response: {}", upstream.toPrettyString());
+        LOGGER.info("Zhipu quota upstream response: {}", upstream.toString());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("provider", "zhipu");
         result.put("tierName", upstream.path("data").path("level").asText("Zhipu"));
