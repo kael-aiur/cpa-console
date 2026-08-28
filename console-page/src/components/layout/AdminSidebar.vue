@@ -1,0 +1,48 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useAppStore } from '@/composables/useAppStore'
+
+const route = useRoute()
+const appStore = useAppStore()
+const menus = [
+  { path: '/admin-user', label: '用户管理', description: '账号与权限管理' },
+  { path: '/admin-credentials', label: '凭证管理', description: '凭证与授权管理' },
+]
+const activePath = computed(() => route.path)
+const projectName = computed(() => appStore.appInfo.value?.projectName ?? 'CPA Console')
+const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
+</script>
+
+<template>
+  <aside class="sidebar admin-sidebar">
+    <div class="sidebar-brand" aria-label="管理员控制台项目信息">
+      <img v-if="logo" class="brand-logo" :src="logo" alt="项目 Logo" />
+      <span v-else class="brand-logo brand-logo-loading" aria-hidden="true"></span>
+      <span class="brand-name">{{ projectName }}</span>
+    </div>
+    <div class="admin-console-label">管理员控制台</div>
+
+    <nav class="sidebar-nav" aria-label="管理员导航">
+      <RouterLink
+        v-for="item in menus"
+        :key="item.path"
+        :to="item.path"
+        class="nav-item"
+        :class="{ active: activePath === item.path }"
+      >
+        <span class="nav-indicator" aria-hidden="true"></span>
+        <span class="nav-copy">
+          <span class="nav-label">{{ item.label }}</span>
+          <span class="nav-description">{{ item.description }}</span>
+        </span>
+      </RouterLink>
+    </nav>
+
+    <RouterLink class="back-to-user" to="/quota">返回用户后台</RouterLink>
+    <div class="sidebar-footer">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span>前端 Mock 运行中</span>
+    </div>
+  </aside>
+</template>

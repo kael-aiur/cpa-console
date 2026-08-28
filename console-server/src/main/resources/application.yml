@@ -1,0 +1,14 @@
+cpa:
+  base-url: ${CPA_BASE_URL:http://127.0.0.1:8317}
+  timeout-ms: ${CPA_TIMEOUT_MS:5000}
+  management-key: ${CPA_MANAGEMENT_KEY:}
+console:
+  data-dir: ${CPA_CONSOLE_DATA_DIR:.data}
+  api-key-encryption-key: ${CPA_CONSOLE_API_KEY_ENCRYPTION_KEY:}
+
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax

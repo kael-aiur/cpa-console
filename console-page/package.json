@@ -1,0 +1,28 @@
+{
+  "name": "@kael/cpa-console-page",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode development",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "build:spring": "npm run type-check && vite build --mode production --outDir ../console-server/src/main/resources/public --emptyOutDir",
+    "build:dev": "npm run type-check && vite build --mode development --outDir dist --emptyOutDir",
+    "type-check": "vue-tsc --build"
+  },
+  "dependencies": {
+    "pinia": "^4.0.3",
+    "vue": "^3.5.18",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.2",
+    "@types/node": "^22.16.5",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.7.0",
+    "npm-run-all2": "^8.0.4",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2",
+    "vue-tsc": "^3.0.5"
+  }
+}
