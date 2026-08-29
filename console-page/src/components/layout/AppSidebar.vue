@@ -9,6 +9,7 @@ const route = useRoute()
 
 const menus = [
   { path: '/quota', label: '额度查看', description: '账户余额与配额' },
+  { path: '/models', label: '可用模型', description: '模型与凭证支持' },
   { path: '/usage', label: '用量查看', description: '请求与消耗统计' },
 ]
 
@@ -41,9 +42,5 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
       </RouterLink>
     </nav>
 
-    <div class="sidebar-footer">
-      <span class="status-dot" aria-hidden="true"></span>
-      <span>前端 Mock 运行中</span>
-    </div>
   </aside>
 </template>

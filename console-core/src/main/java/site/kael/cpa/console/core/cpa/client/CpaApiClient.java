@@ -3,6 +3,7 @@ package site.kael.cpa.console.core.cpa.client;
 import site.kael.cpa.console.core.cpa.exception.CpaManagementException;
 import site.kael.cpa.console.core.cpa.exception.CpaUnavailableException;
 import site.kael.cpa.console.core.cpa.exception.InvalidCpaApiKeyException;
+import site.kael.cpa.console.core.cpa.model.CpaModel;
 import site.kael.cpa.console.core.credential.model.CpaCredential;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -70,6 +71,33 @@ public class CpaApiClient {
         }
     }
 
+
+    public List<CpaModel> listModels(String apiKey, Duration timeout) {
+        if (apiKey == null || apiKey.isBlank()) throw new CpaManagementException("CPA API key is required");
+        HttpRequest request = HttpRequest.newBuilder(modelsUri).timeout(timeout)
+                .header("Authorization", "Bearer " + apiKey.trim()).GET().build();
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new CpaManagementException("CPA model list request failed with HTTP " + response.statusCode());
+            }
+            JsonNode data = objectMapper.readTree(response.body()).path("data");
+            if (!data.isArray()) return List.of();
+            List<CpaModel> result = new ArrayList<>();
+            for (JsonNode model : data) {
+                String id = firstText(model, "id", "name");
+                if (!id.isBlank()) result.add(new CpaModel(id, firstText(model, "owned_by", "ownedBy")));
+            }
+            return result;
+        } catch (CpaManagementException exception) {
+            throw exception;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new CpaManagementException("CPA model list request was interrupted", exception);
+        } catch (IOException exception) {
+            throw new CpaManagementException("CPA model list request failed", exception);
+        }
+    }
 
     public List<String> fetchUsageQueue(int count, Duration timeout) {
         if (count <= 0) throw new IllegalArgumentException("usage queue count must be positive");

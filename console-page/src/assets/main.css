@@ -2988,3 +2988,16 @@ button {
 .admin-usage-user-filter { margin: 14px 0 12px; }
 .admin-usage-user-filter label { display: inline-flex; align-items: center; gap: 10px; color: var(--text-tertiary); font-size: 11px; font-weight: 650; }
 .admin-usage-user-filter select { min-width: 220px; padding: 8px 30px 8px 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary); color: var(--text-secondary); font: inherit; cursor: pointer; }
+
+.models-page-heading { margin-bottom: 2px; }
+.models-list-card { overflow: hidden; border: 1px solid var(--glass-border); border-radius: 16px; background: color-mix(in srgb, var(--bg-primary) 74%, transparent); box-shadow: var(--shadow); }
+.models-table th:nth-child(1) { width: 38%; }
+.models-table th:nth-child(2) { width: 62%; }
+.model-name-cell { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.model-name-cell code { color: var(--text-primary); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 700; }
+.model-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.model-no-tag { color: var(--text-quaternary); font-size: 12px; }
+.models-table .file-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) {
+  .models-table { min-width: 620px; }
+}

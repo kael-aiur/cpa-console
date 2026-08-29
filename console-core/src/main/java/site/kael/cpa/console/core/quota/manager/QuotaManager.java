@@ -59,12 +59,31 @@ public class QuotaManager {
         Credential credential = credentialManager.findByReferenceId(referenceId)
                 .orElseThrow(() -> new IllegalArgumentException("credential not found: " + referenceId));
         if ("auth_file".equals(credential.type())) {
-            return cpaApiKeyManager.getAuthFileQuota(referenceId, credential.provider(), credential.projectId());
+            if (supportsAuthFileQuota(credential.provider())) {
+                return cpaApiKeyManager.getAuthFileQuota(referenceId, credential.provider(), credential.projectId());
+            }
+            return usageBasedQuota(identifyProvider(credential));
         }
         if ("zhipu".equals(identifyProvider(credential))) {
             return cpaApiKeyManager.getZhipuQuota(referenceId, credential.baseUrl());
         }
-        throw new IllegalArgumentException("quota lookup is not supported for provider: " + identifyProvider(credential));
+        return usageBasedQuota(identifyProvider(credential));
+    }
+
+    private Map<String, Object> usageBasedQuota(String provider) {
+        return Map.of(
+                "provider", provider,
+                "tierName", "按量计费",
+                "windows", List.of()
+        );
+    }
+
+    private boolean supportsAuthFileQuota(String provider) {
+        String normalized = provider == null ? "" : provider.trim().toLowerCase();
+        return switch (normalized) {
+            case "codex", "openai", "claude", "anthropic", "kimi", "antigravity", "gemini" -> true;
+            default -> false;
+        };
     }
 
     private String identifyProvider(Credential credential) {
