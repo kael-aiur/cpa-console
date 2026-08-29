@@ -7,6 +7,7 @@ import AdminCredentialsPage from '@/pages/AdminCredentialsPage.vue'
 import AdminUsagePage from '@/pages/AdminUsagePage.vue'
 import QuotaPage from '@/pages/QuotaPage.vue'
 import UsagePage from '@/pages/UsagePage.vue'
+import ModelsPage from '@/pages/ModelsPage.vue'
 import { getUserInfo } from '@/services/authApi'
 
 export const router = createRouter({
@@ -20,6 +21,7 @@ export const router = createRouter({
       children: [
         { path: '', redirect: '/quota' },
         { path: 'quota', name: 'quota', component: QuotaPage, meta: { title: '额度查看' } },
+        { path: 'models', name: 'models', component: ModelsPage, meta: { title: '可用模型' } },
         { path: 'usage', name: 'usage', component: UsagePage, meta: { title: '用量查看' } },
       ],
     },

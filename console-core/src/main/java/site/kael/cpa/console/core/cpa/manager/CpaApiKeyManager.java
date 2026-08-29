@@ -1,6 +1,7 @@
 package site.kael.cpa.console.core.cpa.manager;
 
 import site.kael.cpa.console.core.cpa.client.CpaApiClient;
+import site.kael.cpa.console.core.cpa.model.CpaModel;
 import site.kael.cpa.console.core.credential.model.CpaCredential;
 
 import java.util.List;
@@ -27,6 +28,10 @@ public class CpaApiKeyManager {
 
     public List<CpaCredential> listCredentials() {
         return client.listCredentials(timeout);
+    }
+
+    public List<CpaModel> listModels(String apiKey) {
+        return client.listModels(apiKey, timeout);
     }
 
     public List<Map<String, Object>> listQuotaProviders() {
