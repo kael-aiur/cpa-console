@@ -7,6 +7,7 @@ import iconVertex from '@/assets/icons/vertex.svg'
 import iconKimi from '@/assets/icons/kimi.svg'
 import iconOpenAI from '@/assets/icons/openai.svg'
 import iconZhipu from '@/assets/icons/zhipu.svg'
+import iconOpenRouter from '@/assets/icons/openrouter.svg'
 
 const providerIcons: Record<string, string> = {
   antigravity: iconAntigravity,
@@ -20,6 +21,7 @@ const providerIcons: Record<string, string> = {
   moonshot: iconKimi,
   openai: iconOpenAI,
   zhipu: iconZhipu,
+  openrouter: iconOpenRouter,
 }
 
 export function getProviderIcon(provider: string): string | null {
@@ -37,6 +39,7 @@ export function getProviderLabel(provider: string): string {
   if (normalized === 'kimi' || normalized === 'moonshot') return 'Kimi'
   if (normalized === 'openai') return 'OpenAI'
   if (normalized === 'zhipu') return '智谱 GLM'
+  if (normalized === 'openrouter') return 'OpenRouter'
   return provider || 'Unknown'
 }
 

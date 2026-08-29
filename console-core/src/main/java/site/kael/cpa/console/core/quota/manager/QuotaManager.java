@@ -64,10 +64,12 @@ public class QuotaManager {
             }
             return usageBasedQuota(identifyProvider(credential));
         }
-        if ("zhipu".equals(identifyProvider(credential))) {
+        String provider = identifyProvider(credential);
+        if ("zhipu".equals(provider)) {
             return cpaApiKeyManager.getZhipuQuota(referenceId, credential.baseUrl());
         }
-        return usageBasedQuota(identifyProvider(credential));
+        // OpenRouter is usage-based; do not probe it like finite-quota providers.
+        return usageBasedQuota(provider);
     }
 
     private Map<String, Object> usageBasedQuota(String provider) {
@@ -90,6 +92,7 @@ public class QuotaManager {
         if ("auth_file".equals(credential.type())) return normalizeProvider(credential.provider());
         String host = host(credential.baseUrl());
         if (host.contains("moonshot") || host.contains("kimi")) return "kimi";
+        if (host.equals("openrouter.ai") || host.endsWith(".openrouter.ai")) return "openrouter";
         if (host.contains("bigmodel") || host.equals("api.z.ai") || host.endsWith(".api.z.ai")
                 || host.contains("zhipu") || host.contains("glm")) return "zhipu";
         if (host.contains("anthropic")) return "anthropic";

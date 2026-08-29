@@ -48,6 +48,24 @@ class QuotaManagerTest {
     }
 
     @Test
+    void recognizesOpenRouterApiKeyDomainAsUsageBased() {
+        Credential credential = credential("unknown", "api_key", "https://openrouter.ai/api/v1");
+        CredentialManager credentials = credentialManager(credential);
+        CpaApiKeyManager cpa = new CpaApiKeyManager((CpaApiClient) null, Duration.ZERO) {
+            @Override
+            public Map<String, Object> getZhipuQuota(String referenceId, String baseUrl) {
+                throw new AssertionError("OpenRouter must use usage-based quota");
+            }
+        };
+
+        Map<String, Object> result = new QuotaManager(credentials, cpa).getQuota(credential.referenceId());
+
+        assertEquals("openrouter", result.get("provider"));
+        assertEquals("按量计费", result.get("tierName"));
+        assertEquals(List.of(), result.get("windows"));
+    }
+
+    @Test
     void recognizesZhipuInternationalApiKeyDomain() {
         Credential credential = credential("unknown", "api_key", "https://api.z.ai/v1");
         CredentialManager credentials = credentialManager(credential);
