@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { getUsageRecords, getUsageSummary } from '@/services/usageApi'
+import { getAdminUsageRecords, getAdminUsageSummary, getAdminUsageUsers, type AdminUsageUser } from '@/services/adminApi'
 import type { UsageRecord, UsageSummary, UsageTimeRange } from '@/types/usage'
 
 type QuickRange = 'today' | 'yesterday' | 'week' | 'last7'
@@ -8,6 +8,8 @@ type QuickRange = 'today' | 'yesterday' | 'week' | 'last7'
 const MOCK_TODAY = new Date()
 const pageSize = 10
 const selectedQuick = ref<QuickRange | ''>('today')
+const users = ref<AdminUsageUser[]>([])
+const selectedUserId = ref<number | null>(null)
 const range = ref<UsageTimeRange>(getQuickRange('today'))
 const customRange = ref({ start: toInputValue(range.value.start), end: toInputValue(range.value.end) })
 const summary = ref<UsageSummary | null>(null)
@@ -68,28 +70,34 @@ function modelGradient(data: Record<string, number> | undefined) {
 }
 async function load() {
   loading.value = true; recordsLoading.value = true
-  const [summaryResponse, recordsResponse] = await Promise.all([getUsageSummary(range.value), getUsageRecords(range.value, page.value, pageSize)])
+  const [summaryResponse, recordsResponse] = await Promise.all([getAdminUsageSummary(range.value, selectedUserId.value), getAdminUsageRecords(range.value, page.value, pageSize, selectedUserId.value)])
   summary.value = summaryResponse.data
   records.value = recordsResponse.data.records
   total.value = recordsResponse.data.total
   totalPages.value = recordsResponse.data.total_pages
   loading.value = false; recordsLoading.value = false
 }
-async function changePage(next: number) { page.value = next; const response = await getUsageRecords(range.value, page.value, pageSize); records.value = response.data.records }
-watch(range, () => void load(), { deep: true })
-onMounted(() => void load())
+async function changePage(next: number) { page.value = next; const response = await getAdminUsageRecords(range.value, page.value, pageSize, selectedUserId.value); records.value = response.data.records }
+watch([range, selectedUserId], () => { page.value = 1; void load() }, { deep: true })
+onMounted(() => {
+  void getAdminUsageUsers().then((response) => { users.value = response.data.users }).catch((error) => console.error('Failed to load usage users', error))
+  void load()
+})
 
 const tokenTotal = computed(() => Object.values(summary.value?.model_token_distribution ?? {}).reduce((a, b) => a + b, 0))
 const requestTotal = computed(() => Object.values(summary.value?.model_request_distribution ?? {}).reduce((a, b) => a + b, 0))
+const userTokenTotal = computed(() => Object.values(summary.value?.user_token_distribution ?? {}).reduce((a, b) => a + b, 0))
+const userRequestTotal = computed(() => Object.values(summary.value?.user_request_distribution ?? {}).reduce((a, b) => a + b, 0))
 const modelColors = ['#2d2a26', '#39bd92', '#d89c16', '#6d80d8']
 </script>
 
 <template>
   <section class="page usage-page">
-    <header class="usage-heading"><div><span class="page-eyebrow">USAGE / ANALYTICS</span><h1>用量查看</h1><p>查看指定时间范围内的请求和 Token 使用情况。</p></div><button type="button" class="refresh-action" :disabled="loading" @click="load">刷新数据</button></header>
+    <header class="usage-heading"><div><span class="page-eyebrow">USAGE / ANALYTICS</span><h1>用量统计</h1><p>查看所有用户或指定用户的请求和 Token 使用情况。</p></div><button type="button" class="refresh-action" :disabled="loading" @click="load">刷新数据</button></header>
 
     <section class="usage-filter-card">
       <div class="usage-filter-header"><span class="section-label">时间范围</span><span class="selected-range">{{ formatRange(range.start) }} — {{ formatRange(range.end) }}</span></div>
+      <div class="admin-usage-user-filter"><label>用户<select v-model="selectedUserId"><option :value="null">全部用户</option><option v-for="user in users" :key="user.user_id" :value="user.user_id">{{ user.nickname }}（#{{ user.user_id }}）</option></select></label></div>
       <div class="quick-ranges"><button v-for="item in [{ key: 'today', label: '今天' }, { key: 'yesterday', label: '昨天' }, { key: 'week', label: '本周' }, { key: 'last7', label: '过去 7 天' }]" :key="item.key" type="button" :class="{ active: selectedQuick === item.key }" @click="selectQuick(item.key as QuickRange)">{{ item.label }}</button></div>
       <div class="custom-range"><label>开始时间<input v-model="customRange.start" type="datetime-local" /></label><span>至</span><label>结束时间<input v-model="customRange.end" type="datetime-local" /></label><button type="button" class="filter-apply" @click="applyCustomRange">应用</button></div>
     </section>
@@ -101,9 +109,11 @@ const modelColors = ['#2d2a26', '#39bd92', '#d89c16', '#6d80d8']
       <section class="usage-chart-grid">
         <article class="usage-chart-card"><header><div><span class="section-label">模型 Token 占比</span><p>按总 Token 数计算</p></div></header><div class="donut-layout"><div class="donut-chart" :style="{ background: modelGradient(summary?.model_token_distribution) }"><div><strong>{{ formatTokenNumber(summary?.total_tokens ?? 0) }}</strong><span>Token</span></div></div><div class="chart-legend"><div v-for="(value, model, index) in summary?.model_token_distribution" :key="model"><i :style="{ background: modelColors[index % modelColors.length] }"></i><span>{{ model }}</span><strong>{{ percent(value, tokenTotal).toFixed(1) }}%</strong></div></div></div></article>
         <article class="usage-chart-card"><header><div><span class="section-label">模型请求占比</span><p>按请求次数计算</p></div></header><div class="donut-layout"><div class="donut-chart" :style="{ background: modelGradient(summary?.model_request_distribution) }"><div><strong>{{ formatNumber(summary?.total_requests ?? 0) }}</strong><span>Requests</span></div></div><div class="chart-legend"><div v-for="(value, model, index) in summary?.model_request_distribution" :key="model"><i :style="{ background: modelColors[index % modelColors.length] }"></i><span>{{ model }}</span><strong>{{ percent(value, requestTotal).toFixed(1) }}%</strong></div></div></div></article>
+        <article class="usage-chart-card"><header><div><span class="section-label">用户 Token 占比</span><p>按用户总 Token 数计算</p></div></header><div class="donut-layout"><div class="donut-chart" :style="{ background: modelGradient(summary?.user_token_distribution) }"><div><strong>{{ formatTokenNumber(userTokenTotal) }}</strong><span>Token</span></div></div><div class="chart-legend"><div v-for="(value, user, index) in summary?.user_token_distribution" :key="user"><i :style="{ background: modelColors[index % modelColors.length] }"></i><span>{{ user }}</span><strong>{{ percent(value, userTokenTotal).toFixed(1) }}%</strong></div></div></div></article>
+        <article class="usage-chart-card"><header><div><span class="section-label">用户请求占比</span><p>按用户请求次数计算</p></div></header><div class="donut-layout"><div class="donut-chart" :style="{ background: modelGradient(summary?.user_request_distribution) }"><div><strong>{{ formatNumber(userRequestTotal) }}</strong><span>Requests</span></div></div><div class="chart-legend"><div v-for="(value, user, index) in summary?.user_request_distribution" :key="user"><i :style="{ background: modelColors[index % modelColors.length] }"></i><span>{{ user }}</span><strong>{{ percent(value, userRequestTotal).toFixed(1) }}%</strong></div></div></div></article>
       </section>
 
-      <section class="usage-record-card"><header class="usage-record-header"><div><span class="section-label">请求记录</span><p>按请求时间倒序排列，共 {{ total }} 条记录</p></div></header><div v-if="recordsLoading" class="table-loading"></div><div v-else class="usage-table-wrap"><table class="usage-table"><thead><tr><th>请求模型</th><th>输入 Token</th><th>输出 Token</th><th>缓存命中 Token</th><th>请求时间</th><th>请求耗时</th><th>响应码</th><th>是否成功</th></tr></thead><tbody><tr v-for="record in records" :key="record.id"><td><strong>{{ record.model }}</strong></td><td>{{ formatTokenNumber(record.input_tokens) }}</td><td>{{ formatTokenNumber(record.output_tokens) }}</td><td>{{ formatTokenNumber(record.cached_tokens) }}</td><td>{{ formatTime(record.request_time) }}</td><td>{{ formatDuration(record.duration_ms) }}</td><td><span class="response-code" :class="{ error: record.status_code >= 400 }">{{ record.status_code }}</span></td><td><span class="success-state" :class="{ failed: !record.success }"><i></i>{{ record.success ? '成功' : '失败' }}</span></td></tr></tbody></table></div><footer class="usage-pagination"><span>第 {{ page }} / {{ totalPages }} 页</span><button type="button" :disabled="page <= 1" @click="changePage(page - 1)">上一页</button><button type="button" :disabled="page >= totalPages" @click="changePage(page + 1)">下一页</button></footer></section>
+      <section class="usage-record-card"><header class="usage-record-header"><div><span class="section-label">请求记录</span><p>按请求时间倒序排列，共 {{ total }} 条记录</p></div></header><div v-if="recordsLoading" class="table-loading"></div><div v-else class="usage-table-wrap"><table class="usage-table"><thead><tr><th>请求用户</th><th>请求模型</th><th>输入 Token</th><th>输出 Token</th><th>缓存命中 Token</th><th>请求时间</th><th>请求耗时</th><th>响应码</th><th>是否成功</th></tr></thead><tbody><tr v-for="record in records" :key="record.id"><td>{{ record.request_user ?? '未知用户' }}</td><td><strong>{{ record.model }}</strong></td><td>{{ formatTokenNumber(record.input_tokens) }}</td><td>{{ formatTokenNumber(record.output_tokens) }}</td><td>{{ formatTokenNumber(record.cached_tokens) }}</td><td>{{ formatTime(record.request_time) }}</td><td>{{ formatDuration(record.duration_ms) }}</td><td><span class="response-code" :class="{ error: record.status_code >= 400 }">{{ record.status_code }}</span></td><td><span class="success-state" :class="{ failed: !record.success }"><i></i>{{ record.success ? '成功' : '失败' }}</span></td></tr></tbody></table></div><footer class="usage-pagination"><span>第 {{ page }} / {{ totalPages }} 页</span><button type="button" :disabled="page <= 1" @click="changePage(page - 1)">上一页</button><button type="button" :disabled="page >= totalPages" @click="changePage(page + 1)">下一页</button></footer></section>
     </template>
   </section>
 </template>

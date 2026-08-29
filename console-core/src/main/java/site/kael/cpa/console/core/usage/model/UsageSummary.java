@@ -4,4 +4,6 @@ import java.util.Map;
 
 public record UsageSummary(long totalRequests, long totalTokens, long averageDurationMs,
                            Map<String, Long> modelTokenDistribution,
-                           Map<String, Long> modelRequestDistribution) {}
+                           Map<String, Long> modelRequestDistribution,
+                           Map<String, Long> userTokenDistribution,
+                           Map<String, Long> userRequestDistribution) {}

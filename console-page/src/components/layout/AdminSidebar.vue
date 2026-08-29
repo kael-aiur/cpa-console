@@ -8,6 +8,7 @@ const appStore = useAppStore()
 const menus = [
   { path: '/admin-user', label: '用户管理', description: '账号与权限管理' },
   { path: '/admin-credentials', label: '凭证管理', description: '凭证与授权管理' },
+  { path: '/admin-usage', label: '用量统计', description: '全局请求与消耗统计' },
 ]
 const activePath = computed(() => route.path)
 const projectName = computed(() => appStore.appInfo.value?.projectName ?? 'CPA Console')

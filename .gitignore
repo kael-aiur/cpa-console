@@ -42,3 +42,16 @@ build/
 
 ### Generated frontend assets ###
 console-server/src/main/resources/public/
+
+### Local secrets and runtime files ###
+.env
+.env.*
+!.env.example
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+*.p12
+*.jks

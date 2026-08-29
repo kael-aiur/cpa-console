@@ -72,3 +72,45 @@ export function getAdminCredentials(): Promise<ApiResponse<AdminCredentialListRe
 export function updateAdminCredentialTags(id: number, tags: string[]): Promise<ApiResponse<AdminCredential>> {
   return mutate(`/admin/credentials/${id}`, 'PATCH', { tags }, '凭证标签更新失败，请重试')
 }
+
+export interface AdminUsageUser {
+  user_id: number
+  nickname: string
+  role: 'admin' | 'user'
+}
+
+export interface AdminUsageSummary {
+  total_requests: number
+  total_tokens: number
+  average_duration_ms: number
+  model_token_distribution: Record<string, number>
+  model_request_distribution: Record<string, number>
+  user_token_distribution: Record<string, number>
+  user_request_distribution: Record<string, number>
+}
+
+export interface AdminUsageRecordsResponse {
+  records: import('@/types/usage').UsageRecord[]
+  page: number
+  page_size: number
+  total: number
+  total_pages: number
+}
+
+function usageQuery(range: { start: string; end: string }, userId?: number | null): string {
+  const params = new URLSearchParams({ start: range.start, end: range.end })
+  if (userId !== null && userId !== undefined) params.set('user_id', String(userId))
+  return params.toString()
+}
+
+export function getAdminUsageUsers(): Promise<ApiResponse<{ users: AdminUsageUser[] }>> {
+  return request('/admin/usage/users', {}, '用量用户列表加载失败')
+}
+
+export function getAdminUsageSummary(range: { start: string; end: string }, userId?: number | null): Promise<ApiResponse<AdminUsageSummary>> {
+  return request(`/admin/usage/summary?${usageQuery(range, userId)}`, {}, '用量汇总加载失败')
+}
+
+export function getAdminUsageRecords(range: { start: string; end: string }, page: number, pageSize: number, userId?: number | null): Promise<ApiResponse<AdminUsageRecordsResponse>> {
+  return request(`/admin/usage/records?${usageQuery(range, userId)}&page=${page}&page_size=${pageSize}`, {}, '请求记录加载失败')
+}

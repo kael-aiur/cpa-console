@@ -4,6 +4,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import AdminUserPage from '@/pages/AdminUserPage.vue'
 import AdminCredentialsPage from '@/pages/AdminCredentialsPage.vue'
+import AdminUsagePage from '@/pages/AdminUsagePage.vue'
 import QuotaPage from '@/pages/QuotaPage.vue'
 import UsagePage from '@/pages/UsagePage.vue'
 import { getUserInfo } from '@/services/authApi'
@@ -33,6 +34,12 @@ export const router = createRouter({
       component: AdminLayout,
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [{ path: '', name: 'admin-credentials', component: AdminCredentialsPage, meta: { title: '凭证管理' } }],
+    },
+    {
+      path: '/admin-usage',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [{ path: '', name: 'admin-usage', component: AdminUsagePage, meta: { title: '用量统计' } }],
     },
   ],
 })

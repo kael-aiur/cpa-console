@@ -6,6 +6,7 @@ export interface UsageTimeRange {
 export interface UsageRecord {
   id: number
   model: string
+  request_user?: string
   input_tokens: number
   output_tokens: number
   cached_tokens: number
@@ -21,6 +22,8 @@ export interface UsageSummary {
   average_duration_ms: number
   model_token_distribution: Record<string, number>
   model_request_distribution: Record<string, number>
+  user_token_distribution?: Record<string, number>
+  user_request_distribution?: Record<string, number>
 }
 
 export interface UsageRecordsResponse {
