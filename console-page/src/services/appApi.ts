@@ -1,6 +1,5 @@
-import type { AccountInfo, ApiResponse, AppInfo } from '@/types/app'
+import type { ApiResponse, AppInfo } from '@/types/app'
 import {
-  MOCK_ACCOUNT_NAME,
   MOCK_PROJECT_LOGO_BASE64,
   MOCK_PROJECT_NAME,
 } from '@/mocks/appMockData'
@@ -26,14 +25,4 @@ export function getAppInfo(): Promise<ApiResponse<AppInfo>> {
     logoBase64: MOCK_PROJECT_LOGO_BASE64,
     projectName: MOCK_PROJECT_NAME,
   })
-}
-
-export function getCurrentAccount(): Promise<ApiResponse<AccountInfo>> {
-  return delay({
-    name: MOCK_ACCOUNT_NAME,
-  })
-}
-
-export function logout(): Promise<ApiResponse<null>> {
-  return delay(null, '已退出登录')
 }

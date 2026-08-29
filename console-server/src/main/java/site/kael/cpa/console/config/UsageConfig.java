@@ -7,6 +7,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import site.kael.cpa.console.core.cpa.client.CpaApiClient;
 import site.kael.cpa.console.core.usage.HttpUsageEventSource;
 import site.kael.cpa.console.core.usage.RedisUsageEventSource;
+import site.kael.cpa.console.core.usage.NoopUsageEventSource;
 import site.kael.cpa.console.core.usage.UsageEventSource;
 import site.kael.cpa.console.core.usage.redis.RedisUsageClient;
 
@@ -34,18 +35,21 @@ public class UsageConfig {
 
     @Bean
     public UsageEventSource usageEventSource(
-            @Value("${cpa.usage-mode:${CPA_USAGE_MODE:http}}") String mode,
+            @Value("${cpa.usage-mode:${CPA_USAGE_MODE:none}}") String mode,
             RedisUsageClient redisUsageClient,
             CpaApiClient cpaApiClient,
             @Value("${cpa.timeout-ms:${CPA_TIMEOUT_MS:5000}}") long timeoutMs,
             @Value("${cpa.usage-fallback-interval:${CPA_USAGE_FALLBACK_INTERVAL:1m}}") Duration fallbackInterval,
             @Value("${cpa.usage-batch-size:${CPA_USAGE_BATCH_SIZE:1000}}") int batchSize
     ) {
+        if ("none".equalsIgnoreCase(mode.trim())) {
+            return new NoopUsageEventSource();
+        }
         if ("http".equalsIgnoreCase(mode.trim())) {
             return new HttpUsageEventSource(cpaApiClient, Duration.ofMillis(timeoutMs), fallbackInterval, batchSize);
         }
         if (!"redis".equalsIgnoreCase(mode.trim())) {
-            throw new IllegalArgumentException("cpa.usage-mode must be redis or http");
+            throw new IllegalArgumentException("cpa.usage-mode must be none, redis or http");
         }
         return new RedisUsageEventSource(redisUsageClient, fallbackInterval, batchSize);
     }

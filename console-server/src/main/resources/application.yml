@@ -4,7 +4,7 @@ cpa:
   management-key: ${CPA_MANAGEMENT_KEY:}
   redis-addr: ${CPA_REDIS_ADDR:}
   redis-tls: ${CPA_REDIS_TLS:false}
-  usage-mode: ${CPA_USAGE_MODE:http}
+  usage-mode: ${CPA_USAGE_MODE:none}
   usage-fallback-interval: ${CPA_USAGE_FALLBACK_INTERVAL:1m}
   usage-process-interval: ${CPA_USAGE_PROCESS_INTERVAL:1s}
   usage-batch-size: ${CPA_USAGE_BATCH_SIZE:1000}

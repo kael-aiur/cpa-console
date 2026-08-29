@@ -41,9 +41,5 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
     </nav>
 
     <RouterLink class="back-to-user" to="/quota">返回用户后台</RouterLink>
-    <div class="sidebar-footer">
-      <span class="status-dot" aria-hidden="true"></span>
-      <span>前端 Mock 运行中</span>
-    </div>
   </aside>
 </template>

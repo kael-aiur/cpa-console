@@ -41,9 +41,5 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
       </RouterLink>
     </nav>
 
-    <div class="sidebar-footer">
-      <span class="status-dot" aria-hidden="true"></span>
-      <span>前端 Mock 运行中</span>
-    </div>
   </aside>
 </template>

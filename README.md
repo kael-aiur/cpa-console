@@ -93,7 +93,11 @@ usage_events 结构化事件表
 用量查询和统计
 ```
 
-支持两种采集模式，可通过配置切换：
+支持三种采集模式，可通过配置切换：
+
+### None 模式
+
+设置 `CPA_USAGE_MODE=none` 时关闭 usage event 采集，不会从 CPA HTTP usage queue 或 Redis usage channel/queue 读取记录，适合本地开发调试，避免与线上服务争夺 usage 记录。
 
 ### HTTP 模式
 
@@ -183,7 +187,7 @@ cpa:
   base-url: ${CPA_BASE_URL:http://127.0.0.1:8317}
   timeout-ms: ${CPA_TIMEOUT_MS:5000}
   management-key: ${CPA_MANAGEMENT_KEY:}
-  usage-mode: ${CPA_USAGE_MODE:http}
+  usage-mode: ${CPA_USAGE_MODE:none}
   usage-fallback-interval: ${CPA_USAGE_FALLBACK_INTERVAL:1m}
   usage-process-interval: ${CPA_USAGE_PROCESS_INTERVAL:1s}
   usage-batch-size: ${CPA_USAGE_BATCH_SIZE:1000}
@@ -250,7 +254,7 @@ docker run -d \
   kael2018/cpa-console:latest
 ```
 
-数据库和运行数据保存在容器内 `/app/.data`，生产环境应挂载到宿主机持久化。默认用量采集模式为 HTTPS HTTP usage-queue；如需 Redis 模式，设置 `CPA_USAGE_MODE=redis`。
+数据库和运行数据保存在容器内 `/app/.data`，生产环境应挂载到宿主机持久化。默认用量采集模式为 `none`，不会从 CPA 读取 usage 记录；如需 HTTP 模式，设置 `CPA_USAGE_MODE=http`，如需 Redis 模式，设置 `CPA_USAGE_MODE=redis`。
 
 ### GitHub Actions 镜像发布
 
