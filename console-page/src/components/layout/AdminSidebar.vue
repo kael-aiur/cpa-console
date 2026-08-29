@@ -40,6 +40,6 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
       </RouterLink>
     </nav>
 
-    <RouterLink class="back-to-user" to="/quota">返回用户后台</RouterLink>
+    <RouterLink class="back-to-user" to="/usage">返回用户后台</RouterLink>
   </aside>
 </template>
