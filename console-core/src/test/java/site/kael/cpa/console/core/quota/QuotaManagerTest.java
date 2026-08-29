@@ -48,6 +48,22 @@ class QuotaManagerTest {
     }
 
     @Test
+    void recognizesZhipuInternationalApiKeyDomain() {
+        Credential credential = credential("unknown", "api_key", "https://api.z.ai/v1");
+        CredentialManager credentials = credentialManager(credential);
+        CpaApiKeyManager cpa = new CpaApiKeyManager((CpaApiClient) null, Duration.ZERO) {
+            @Override
+            public Map<String, Object> getZhipuQuota(String referenceId, String baseUrl) {
+                return Map.of("provider", "zhipu");
+            }
+        };
+
+        Map<String, Object> result = new QuotaManager(credentials, cpa).getQuota(credential.referenceId());
+
+        assertEquals("zhipu", result.get("provider"));
+    }
+
+    @Test
     void keepsMissingCredentialAsBadRequestInput() {
         CredentialManager credentials = new CredentialManager(null, null) {
             @Override

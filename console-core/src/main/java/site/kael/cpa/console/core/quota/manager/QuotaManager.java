@@ -90,7 +90,8 @@ public class QuotaManager {
         if ("auth_file".equals(credential.type())) return normalizeProvider(credential.provider());
         String host = host(credential.baseUrl());
         if (host.contains("moonshot") || host.contains("kimi")) return "kimi";
-        if (host.contains("bigmodel") || host.contains("zhipu") || host.contains("glm")) return "zhipu";
+        if (host.contains("bigmodel") || host.equals("api.z.ai") || host.endsWith(".api.z.ai")
+                || host.contains("zhipu") || host.contains("glm")) return "zhipu";
         if (host.contains("anthropic")) return "anthropic";
         if (host.contains("openai") || host.contains("chatgpt")) return "codex";
         if (host.contains("x.ai") || host.contains("xai") || host.contains("grok")) return "grok";
