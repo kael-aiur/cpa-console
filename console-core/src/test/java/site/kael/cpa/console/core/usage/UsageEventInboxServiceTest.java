@@ -24,7 +24,7 @@ class UsageEventInboxServiceTest {
     @Test
     void processesInboxAndRemovesRawPayloadWhilePersistingKeyHash() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource("jdbc:sqlite:" + tempDatabase());
-        new ResourceDatabasePopulator(new org.springframework.core.io.ClassPathResource("schema.sql")).execute(dataSource);
+        new ResourceDatabasePopulator(new org.springframework.core.io.ClassPathResource("db/migration/001__init.sql")).execute(dataSource);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         UsageEventInboxDao inboxDao = new UsageEventInboxDao(jdbc);
         UsageEventDao eventDao = new UsageEventDao(jdbc);
@@ -45,7 +45,7 @@ class UsageEventInboxServiceTest {
     @Test
     void keepsMalformedPayloadForDecodeFailure() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource("jdbc:sqlite:" + tempDatabase());
-        new ResourceDatabasePopulator(new org.springframework.core.io.ClassPathResource("schema.sql")).execute(dataSource);
+        new ResourceDatabasePopulator(new org.springframework.core.io.ClassPathResource("db/migration/001__init.sql")).execute(dataSource);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         UsageEventInboxDao inboxDao = new UsageEventInboxDao(jdbc);
         UsageEventInboxService service = new UsageEventInboxService(inboxDao, new UsageEventDao(jdbc),

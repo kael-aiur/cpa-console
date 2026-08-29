@@ -54,3 +54,9 @@ Do not commit `.env`, credentials, target artifacts, or generated public assets 
 ### Administrator API Path and Authorization Requirement
 
 所有仅供管理员后台使用的后端 API 必须统一放在 `/admin/` 路径下（例如 `/admin/users`、`/admin/credentials`）。后端必须对 `/admin/` 路径进行统一权限拦截：先校验登录状态，再校验当前用户 `role === "admin"`；未登录请求必须拒绝，非管理员用户请求必须拒绝，不得仅依赖前端路由守卫或前端隐藏菜单来保证权限。新增管理员后台功能时，Controller 的接口路径、权限配置和相关测试都必须遵循此要求。
+
+## Database Migration Requirement
+
+涉及数据库结构或数据变更的新功能，必须先阅读并遵循 [`docs/database-migrations.md`](docs/database-migrations.md) 中的数据库平滑升级方案。
+
+所有数据库变更必须通过版本化、只追加的迁移脚本完成，不得直接修改已经发布或已经执行过的初始化 SQL、schema SQL 或历史迁移文件。实现时必须考虑已有数据库升级、迁移失败回滚、重复启动、checksum 校验和必要的迁移测试。

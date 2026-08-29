@@ -3,10 +3,9 @@ package site.kael.cpa.console.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
+import site.kael.cpa.console.core.database.DatabaseMigrationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
 import java.nio.file.Files;
@@ -23,7 +22,7 @@ public class DatabaseConfig {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.sqlite.JDBC");
         dataSource.setUrl("jdbc:sqlite:" + directory.resolve("cpa-console.db"));
-        new ResourceDatabasePopulator(new ClassPathResource("schema.sql")).execute(dataSource);
+        new DatabaseMigrationRunner(dataSource).migrate();
         return dataSource;
     }
 
