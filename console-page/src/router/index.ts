@@ -19,7 +19,7 @@ export const router = createRouter({
       component: MainLayout,
       meta: { requiresAuth: true },
       children: [
-        { path: '', redirect: '/quota' },
+        { path: '', redirect: '/usage' },
         { path: 'quota', name: 'quota', component: QuotaPage, meta: { title: '额度查看' } },
         { path: 'models', name: 'models', component: ModelsPage, meta: { title: '可用模型' } },
         { path: 'usage', name: 'usage', component: UsagePage, meta: { title: '用量查看' } },
@@ -51,8 +51,8 @@ router.beforeEach(async (to) => {
   const isAdminRoute = to.path.startsWith('/admin-')
   try {
     const response = await getUserInfo()
-    if (to.meta.guestOnly) return { name: 'quota' }
-    if (requiresAuth && isAdminRoute && response.data.role !== 'admin') return { name: 'quota' }
+    if (to.meta.guestOnly) return { name: 'usage' }
+    if (requiresAuth && isAdminRoute && response.data.role !== 'admin') return { name: 'usage' }
     return true
   } catch {
     // 登录页本身允许匿名访问；未登录时必须放行当前路由，避免重定向到自身形成循环。

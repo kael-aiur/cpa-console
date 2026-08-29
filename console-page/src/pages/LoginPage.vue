@@ -19,7 +19,7 @@ async function handleLogin() {
   errorMessage.value = ''
   try {
     await loginWithApiKey(apiKey.value)
-    await router.push('/quota')
+    await router.push('/usage')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '登录失败，请重试'
   } finally {
