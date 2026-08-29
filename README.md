@@ -228,6 +228,44 @@ CPA_CONSOLE_API_KEY_ENCRYPTION_KEY="$(openssl rand -base64 32)"
 
 生产环境必须妥善保存该密钥。密钥变更后，历史加密 API Key 将无法解密。
 
+## Docker 部署
+
+构建镜像：
+
+```bash
+docker build -t kael2018/cpa-console:latest .
+```
+
+运行容器：
+
+```bash
+docker run -d \
+  --name cpa-console \
+  -p 8080:8080 \
+  -v ./data:/app/.data \
+  -e CPA_BASE_URL=https://your-cpa.example.com \
+  -e CPA_MANAGEMENT_KEY=your-management-key \
+  -e CPA_CONSOLE_API_KEY_ENCRYPTION_KEY=your-base64-aes-key \
+  --restart unless-stopped \
+  kael2018/cpa-console:latest
+```
+
+数据库和运行数据保存在容器内 `/app/.data`，生产环境应挂载到宿主机持久化。默认用量采集模式为 HTTPS HTTP usage-queue；如需 Redis 模式，设置 `CPA_USAGE_MODE=redis`。
+
+### GitHub Actions 镜像发布
+
+仓库包含 `.github/workflows/docker-build.yml`。代码合并并推送到 `main` 分支后，GitHub Actions 会自动构建并推送：
+
+```text
+kael2018/cpa-console:latest
+kael2018/cpa-console:<commit-sha>
+```
+
+需要在 GitHub 仓库 Secrets 中配置：
+
+- `DOCKERHUB_USERNAME`：Docker Hub 用户名；
+- `DOCKERHUB_TOKEN`：Docker Hub Access Token。
+
 ## 开发运行
 
 ### 启动前端开发服务器

@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.data
+**/target
+console-page/node_modules
+console-page/dist
+console-server/src/main/resources/public
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+*.log
