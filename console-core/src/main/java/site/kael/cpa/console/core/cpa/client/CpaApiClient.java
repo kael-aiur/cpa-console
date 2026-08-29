@@ -71,6 +71,15 @@ public class CpaApiClient {
     }
 
 
+    public List<String> fetchUsageQueue(int count, Duration timeout) {
+        if (count <= 0) throw new IllegalArgumentException("usage queue count must be positive");
+        JsonNode root = getManagementJson("/usage-queue?count=" + URLEncoder.encode(Integer.toString(count), StandardCharsets.UTF_8), timeout);
+        List<String> messages = new ArrayList<>();
+        if (!root.isArray()) return messages;
+        for (JsonNode item : root) messages.add(item.isTextual() ? item.asText() : item.toString());
+        return messages;
+    }
+
     public List<CpaCredential> listCredentials(Duration timeout) {
         if (managementKey.isBlank()) {
             throw new CpaManagementException("CPA management key is not configured");

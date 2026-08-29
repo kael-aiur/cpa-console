@@ -5,7 +5,7 @@ import type { UsageRecord, UsageSummary, UsageTimeRange } from '@/types/usage'
 
 type QuickRange = 'today' | 'yesterday' | 'week' | 'last7'
 
-const MOCK_TODAY = new Date('2026-08-27T12:00:00+08:00')
+const MOCK_TODAY = new Date()
 const pageSize = 10
 const selectedQuick = ref<QuickRange | ''>('today')
 const range = ref<UsageTimeRange>(getQuickRange('today'))
@@ -20,7 +20,11 @@ const recordsLoading = ref(true)
 
 function pad(value: number) { return String(value).padStart(2, '0') }
 function formatDate(date: Date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` }
-function toInputValue(value: string) { return value.slice(0, 16) }
+function toInputValue(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 function getQuickRange(type: QuickRange): UsageTimeRange {
   const date = new Date(MOCK_TODAY)
   const start = new Date(date)
@@ -29,7 +33,7 @@ function getQuickRange(type: QuickRange): UsageTimeRange {
   if (type === 'week') { const day = start.getDay() || 7; start.setDate(start.getDate() - day + 1); end.setDate(start.getDate() + 6) }
   if (type === 'last7') start.setDate(start.getDate() - 6)
   start.setHours(0, 0, 0, 0)
-  end.setHours(23, 59, 59, 999)
+  end.setHours(23, 59, 0, 0)
   return { start: start.toISOString(), end: end.toISOString() }
 }
 function selectQuick(type: QuickRange) {

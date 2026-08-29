@@ -2,6 +2,13 @@ cpa:
   base-url: ${CPA_BASE_URL:http://127.0.0.1:8317}
   timeout-ms: ${CPA_TIMEOUT_MS:5000}
   management-key: ${CPA_MANAGEMENT_KEY:}
+  redis-addr: ${CPA_REDIS_ADDR:}
+  redis-tls: ${CPA_REDIS_TLS:false}
+  usage-mode: ${CPA_USAGE_MODE:http}
+  usage-fallback-interval: ${CPA_USAGE_FALLBACK_INTERVAL:1m}
+  usage-process-interval: ${CPA_USAGE_PROCESS_INTERVAL:1s}
+  usage-batch-size: ${CPA_USAGE_BATCH_SIZE:1000}
+  usage-process-batch-size: ${CPA_USAGE_PROCESS_BATCH_SIZE:100}
 console:
   data-dir: ${CPA_CONSOLE_DATA_DIR:.data}
   api-key-encryption-key: ${CPA_CONSOLE_API_KEY_ENCRYPTION_KEY:}
