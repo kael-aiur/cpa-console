@@ -17,5 +17,7 @@ server:
   servlet:
     session:
       cookie:
+        # -1 表示浏览器会话 Cookie：关闭浏览器后登录态 Cookie 失效。
+        max-age: -1s
         http-only: true
         same-site: lax
