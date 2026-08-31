@@ -69,7 +69,7 @@ onMounted(async () => {
         </button>
       </form>
 
-      <p class="login-hint">登录成功后，凭证将由当前域名 Cookie 保存。</p>
+      <p class="login-hint">登录态仅在当前浏览器会话内有效。</p>
     </section>
   </main>
 </template>
