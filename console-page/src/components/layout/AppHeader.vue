@@ -106,7 +106,7 @@ onBeforeUnmount(() => {
             v-if="appStore.userInfo.value?.role === 'admin'"
             class="admin-console-link"
             role="menuitem"
-            to="/admin-user"
+            to="/admin-usage"
             @click="closeAccountMenu"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
