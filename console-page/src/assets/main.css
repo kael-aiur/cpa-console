@@ -2214,7 +2214,8 @@ button {
   .login-page {
     align-items: center;
     min-height: 100vh;
-    padding: 18px;
+    padding: max(18px, env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+    overflow-y: auto;
   }
 
   @supports (min-height: 100dvh) {
@@ -2224,8 +2225,22 @@ button {
   }
 
   .login-card {
+    width: min(100%, 420px);
     gap: 24px;
-    padding: 26px 20px;
+    margin: auto;
+    padding: 24px 18px;
+  }
+
+  .login-brand {
+    min-width: 0;
+  }
+
+  .login-brand > div {
+    min-width: 0;
+  }
+
+  .login-brand h1 {
+    overflow-wrap: anywhere;
   }
 
   .login-logo {
@@ -2236,6 +2251,47 @@ button {
 
   .login-copy h2 {
     font-size: 24px;
+  }
+
+  /* iOS Safari 在输入字体小于 16px 时会自动缩放整个页面；移动端输入控件必须保持 >=16px。 */
+  .login-form input {
+    height: 48px;
+    font-size: max(16px, 1rem);
+  }
+
+  .login-form label {
+    font-size: 12.5px;
+  }
+
+  .login-submit {
+    height: 48px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 380px) {
+  .login-page {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .login-card {
+    padding: 20px 15px;
+    border-radius: 18px;
+  }
+
+  .login-brand {
+    align-items: flex-start;
+  }
+
+  .login-copy h2 {
+    font-size: 22px;
+  }
+
+  .login-copy p,
+  .login-hint {
+    font-size: 12.5px;
+    line-height: 1.55;
   }
 }
 
