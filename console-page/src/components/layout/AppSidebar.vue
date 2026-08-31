@@ -13,13 +13,21 @@ const menus = [
   { path: '/models', label: '可用模型', description: '模型与凭证支持' },
 ]
 
+const emit = defineEmits<{
+  close: []
+}>()
+
 const activePath = computed(() => route.path)
 const projectName = computed(() => appStore.appInfo.value?.projectName ?? 'CPA Console')
 const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
+
+function closeSidebar() {
+  emit('close')
+}
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside id="app-sidebar" class="sidebar">
     <div class="sidebar-brand" aria-label="项目信息">
       <img v-if="logo" class="brand-logo" :src="logo" alt="项目 Logo" />
       <span v-else class="brand-logo brand-logo-loading" aria-hidden="true"></span>
@@ -33,6 +41,7 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
         :to="item.path"
         class="nav-item"
         :class="{ active: activePath === item.path }"
+        @click="closeSidebar"
       >
         <span class="nav-indicator" aria-hidden="true"></span>
         <span class="nav-copy">

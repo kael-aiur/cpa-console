@@ -2,8 +2,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAppStore } from '@/composables/useAppStore'
 
+const props = defineProps<{
+  sidebarOpen: boolean
+}>()
+
 const emit = defineEmits<{
   logout: []
+  toggleSidebar: []
 }>()
 
 const appStore = useAppStore()
@@ -12,14 +17,24 @@ const accountMenuRef = ref<HTMLElement | null>(null)
 
 const accountName = computed(() => appStore.account.value?.name ?? '未登录')
 const roleLabel = computed(() => (appStore.userInfo.value?.role === 'admin' ? '管理员' : '普通用户'))
+const menuLabel = computed(() => (props.sidebarOpen ? '关闭导航菜单' : '打开导航菜单'))
 
 function toggleAccountMenu() {
   accountMenuOpen.value = !accountMenuOpen.value
 }
 
+function handleToggleSidebar() {
+  accountMenuOpen.value = false
+  emit('toggleSidebar')
+}
+
 function handleLogout() {
   accountMenuOpen.value = false
   emit('logout')
+}
+
+function closeAccountMenu() {
+  accountMenuOpen.value = false
 }
 
 function handleDocumentPointerdown(event: MouseEvent) {
@@ -47,6 +62,24 @@ onBeforeUnmount(() => {
 
 <template>
   <header class="app-header">
+    <div class="mobile-menu">
+      <button
+        type="button"
+        class="mobile-menu-trigger"
+        :aria-expanded="sidebarOpen"
+        aria-controls="app-sidebar"
+        :aria-label="menuLabel"
+        @click="handleToggleSidebar"
+      >
+        <svg v-if="sidebarOpen" class="mobile-menu-close-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+        <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </button>
+    </div>
+
     <div ref="accountMenuRef" class="account-menu">
       <button
         type="button"
@@ -74,7 +107,7 @@ onBeforeUnmount(() => {
             class="admin-console-link"
             role="menuitem"
             to="/admin-user"
-            @click="accountMenuOpen = false"
+            @click="closeAccountMenu"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5z" />

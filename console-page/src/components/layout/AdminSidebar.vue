@@ -10,13 +10,21 @@ const menus = [
   { path: '/admin-credentials', label: '凭证管理', description: '凭证与授权管理' },
   { path: '/admin-usage', label: '用量统计', description: '全局请求与消耗统计' },
 ]
+const emit = defineEmits<{
+  close: []
+}>()
+
 const activePath = computed(() => route.path)
 const projectName = computed(() => appStore.appInfo.value?.projectName ?? 'CPA Console')
 const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
+
+function closeSidebar() {
+  emit('close')
+}
 </script>
 
 <template>
-  <aside class="sidebar admin-sidebar">
+  <aside id="app-sidebar" class="sidebar admin-sidebar">
     <div class="sidebar-brand" aria-label="管理员控制台项目信息">
       <img v-if="logo" class="brand-logo" :src="logo" alt="项目 Logo" />
       <span v-else class="brand-logo brand-logo-loading" aria-hidden="true"></span>
@@ -31,6 +39,7 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
         :to="item.path"
         class="nav-item"
         :class="{ active: activePath === item.path }"
+        @click="closeSidebar"
       >
         <span class="nav-indicator" aria-hidden="true"></span>
         <span class="nav-copy">
@@ -40,6 +49,6 @@ const logo = computed(() => appStore.appInfo.value?.logoBase64 ?? '')
       </RouterLink>
     </nav>
 
-    <RouterLink class="back-to-user" to="/usage">返回用户后台</RouterLink>
+    <RouterLink class="back-to-user" to="/usage" @click="closeSidebar">返回用户后台</RouterLink>
   </aside>
 </template>
