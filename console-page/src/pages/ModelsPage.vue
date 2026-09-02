@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { getAvailableModels } from '@/services/modelsApi'
+import { getAvailableModels, getCodexModelCatalog } from '@/services/modelsApi'
 import type { AvailableModel } from '@/types/models'
 
 const models = ref<AvailableModel[]>([])
@@ -11,6 +11,8 @@ const refreshing = ref(false)
 const keyword = ref('')
 const copiedModel = ref<string | null>(null)
 const errorMessage = ref('')
+const downloadingCatalog = ref(false)
+const downloadErrorMessage = ref('')
 
 const filteredModels = computed(() => {
   const value = keyword.value.trim().toLowerCase()
@@ -53,6 +55,28 @@ async function copyModel(model: AvailableModel) {
   }
 }
 
+async function downloadModelCatalog() {
+  downloadingCatalog.value = true
+  downloadErrorMessage.value = ''
+  try {
+    const catalog = await getCodexModelCatalog()
+    const content = `${JSON.stringify(catalog, null, 2)}\n`
+    const blob = new Blob([content], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'model-catalog.local.json'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    downloadErrorMessage.value = error instanceof Error ? error.message : 'ChatGPT 模型列表下载失败'
+  } finally {
+    downloadingCatalog.value = false
+  }
+}
+
 onMounted(() => void loadModels())
 </script>
 
@@ -64,11 +88,23 @@ onMounted(() => void loadModels())
         <h1>可用模型</h1>
         <p>查看当前 CPA 凭证支持的模型，并快速复制模型名。</p>
       </div>
-      <button type="button" class="refresh-action" :disabled="refreshing" @click="loadModels">
-        <svg :class="{ spinning: refreshing }" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
-        刷新列表
-      </button>
+      <div class="models-heading-actions">
+        <button type="button" class="refresh-action" :disabled="refreshing" @click="loadModels">
+          <svg :class="{ spinning: refreshing }" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
+          刷新列表
+        </button>
+        <button type="button" class="catalog-download-action" :disabled="downloadingCatalog" @click="downloadModelCatalog">
+          <svg :class="{ spinning: downloadingCatalog }" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+          {{ downloadingCatalog ? '下载中…' : '下载 ChatGPT 模型列表' }}
+        </button>
+        <span class="catalog-help" tabindex="0" aria-label="ChatGPT 模型列表使用说明">
+          ?
+          <span class="catalog-help-tooltip" role="tooltip">下载的 model-catalog.local.json 放到 ~/.codex/ 目录下，并在 ~/.codex/config.toml 配置 model_catalog_json = "~/.codex/model-catalog.local.json" 即可在 ChatGPT 对话中直接选择这些模型。</span>
+        </span>
+      </div>
     </header>
+
+    <p v-if="downloadErrorMessage" class="catalog-download-error">{{ downloadErrorMessage }}</p>
 
     <section class="models-list-card">
       <div class="admin-list-toolbar">

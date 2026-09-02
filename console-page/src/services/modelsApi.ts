@@ -18,3 +18,9 @@ export async function getAvailableModels(): Promise<ApiResponse<AvailableModelLi
   if (!response.ok) throw await readError(response, '可用模型加载失败')
   return { code: 0, message: 'ok', data: (await response.json()) as AvailableModelListResponse }
 }
+
+export async function getCodexModelCatalog(): Promise<unknown> {
+  const response = await fetch('/api/codex/model_catalog', { credentials: 'include' })
+  if (!response.ok) throw await readError(response, 'ChatGPT 模型列表下载失败')
+  return await response.json()
+}
