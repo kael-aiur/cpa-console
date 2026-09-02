@@ -16,6 +16,11 @@ const providerIcons: Record<string, string> = {
   claude: iconClaude,
   grok: iconGrok,
   gemini: iconGemini,
+  'gemini-interactions': iconGemini,
+  interactions: iconGemini,
+  'interactions-api-key': iconGemini,
+  'google interactions': iconGemini,
+  'gemini interactions': iconGemini,
   vertex: iconVertex,
   kimi: iconKimi,
   moonshot: iconKimi,
@@ -35,6 +40,7 @@ export function getProviderLabel(provider: string): string {
   if (normalized === 'anthropic' || normalized === 'claude') return 'Anthropic'
   if (normalized === 'grok') return 'Grok'
   if (normalized === 'gemini') return 'Gemini'
+  if (normalized === 'gemini-interactions' || normalized === 'interactions' || normalized === 'interactions-api-key' || normalized === 'google interactions' || normalized === 'gemini interactions') return 'Google Interactions'
   if (normalized === 'vertex') return 'Vertex'
   if (normalized === 'kimi' || normalized === 'moonshot') return 'Kimi'
   if (normalized === 'openai') return 'OpenAI'

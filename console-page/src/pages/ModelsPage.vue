@@ -127,7 +127,7 @@ onMounted(() => void loadModels())
       <div v-if="loading" class="admin-table-skeleton" aria-hidden="true"><span v-for="item in 5" :key="item"></span></div>
       <div v-else-if="errorMessage" class="admin-empty-state"><h2>模型加载失败</h2><p>{{ errorMessage }}</p></div>
       <div v-else-if="filteredModels.length === 0" class="admin-empty-state"><h2>没有找到可用模型</h2><p>{{ keyword || selectedTag !== 'all' ? '请尝试更换筛选条件。' : '当前没有从 CPA 获取到可用模型。' }}</p></div>
-      <div v-else class="admin-table-wrap">
+      <div v-else class="admin-table-wrap models-table-wrap">
         <table class="admin-table models-table">
           <thead><tr><th>模型名</th><th>标签</th></tr></thead>
           <tbody>

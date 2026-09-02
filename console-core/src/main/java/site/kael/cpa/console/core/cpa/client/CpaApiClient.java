@@ -160,7 +160,7 @@ public class CpaApiClient {
     private void addProviderCredential(List<CpaCredential> credentials, String provider, JsonNode parent, JsonNode entry, JsonNode apiKeyUsage) {
         String referenceId = firstText(entry, "auth-index", "auth_index", "id");
         String apiKey = firstText(entry, "api-key", "api_key");
-        String serviceDomain = serviceDomain(parent, entry);
+        String serviceDomain = serviceDomain(provider, parent, entry);
         String name = serviceDomain + (apiKey.isBlank() ? "" : "(" + maskApiKey(apiKey) + ")");
         if (referenceId.isBlank()) {
             String identity = firstText(entry, "api-key", "name", "id") + "|" + firstText(parent, "base-url", "base_url");
@@ -193,7 +193,7 @@ public class CpaApiClient {
         };
     }
 
-    private String serviceDomain(JsonNode parent, JsonNode entry) {
+    private String serviceDomain(String provider, JsonNode parent, JsonNode entry) {
         String baseUrl = firstText(entry, "base-url", "base_url");
         if (baseUrl.isBlank()) baseUrl = firstText(parent, "base-url", "base_url");
         if (!baseUrl.isBlank()) {
@@ -204,7 +204,10 @@ public class CpaApiClient {
                 // Fall back to the provider endpoint label for malformed CPA URLs.
             }
         }
-        return providerName(firstText(parent, "provider", "type"));
+        // An omitted base URL means this credential uses the provider's official
+        // endpoint. The parent/entry payload may not contain provider/type, so use
+        // the management endpoint identifier passed to addProviderCredential.
+        return providerName(provider);
     }
 
     private String maskApiKey(String apiKey) {
