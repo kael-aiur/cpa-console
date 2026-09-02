@@ -12,12 +12,13 @@ cpa:
 console:
   data-dir: ${CPA_CONSOLE_DATA_DIR:.data}
   api-key-encryption-key: ${CPA_CONSOLE_API_KEY_ENCRYPTION_KEY:}
-
+  auth:
+    persistent-login-ttl: ${CPA_CONSOLE_LOGIN_TTL:7d}
 server:
   servlet:
     session:
+      timeout: ${CPA_CONSOLE_LOGIN_TTL:7d}
       cookie:
-        # -1 表示浏览器会话 Cookie：关闭浏览器后登录态 Cookie 失效。
-        max-age: -1s
+        max-age: ${CPA_CONSOLE_LOGIN_TTL:7d}
         http-only: true
         same-site: lax

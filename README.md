@@ -9,8 +9,9 @@ CPA Console 是一个面向 [CLIProxyAPI](https://github.com/router-for-me/CLIPr
 ### 用户登录
 
 - 使用 CLIProxyAPI API Key 登录控制台。
-- 登录后通过 Session 保持登录状态。
-- 支持退出登录。
+- 登录后通过 Session 和数据库持久化登录 Token 保持登录状态。
+- 登录状态默认保留 7 天，关闭浏览器或重启服务后仍可自动恢复。
+- 支持退出登录并撤销当前设备的持久化登录 Token。
 - API Key 在本地数据库中使用 HMAC Hash 做匹配，并使用 AES-GCM 加密保存。
 
 ### 普通用户后台
@@ -222,6 +223,17 @@ Redis 地址未配置时，程序会根据 `CPA_BASE_URL` 推导地址；但如�
 console:
   data-dir: ${CPA_CONSOLE_DATA_DIR:.data}
   api-key-encryption-key: ${CPA_CONSOLE_API_KEY_ENCRYPTION_KEY:}
+  auth:
+    persistent-login-ttl: ${CPA_CONSOLE_LOGIN_TTL:7d}
+
+server:
+  servlet:
+    session:
+      timeout: ${CPA_CONSOLE_LOGIN_TTL:7d}
+      cookie:
+        max-age: ${CPA_CONSOLE_LOGIN_TTL:7d}
+        http-only: true
+        same-site: lax
 ```
 
 `CPA_CONSOLE_API_KEY_ENCRYPTION_KEY` 必须是 Base64 编码的 AES 密钥，长度为 16、24 或 32 字节。例如可以使用 32 字节随机密钥：
