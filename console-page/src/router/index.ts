@@ -27,7 +27,12 @@ export const router = createRouter({
     },
     // 管理员后台默认进入用量统计。
     { path: '/admin', redirect: '/admin-usage' },
-    { path: '/admin-user', redirect: '/admin-usage' },
+    {
+      path: '/admin-user',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [{ path: '', name: 'admin-user', component: AdminUserPage, meta: { title: '用户管理' } }],
+    },
     {
       path: '/admin-credentials',
       component: AdminLayout,
