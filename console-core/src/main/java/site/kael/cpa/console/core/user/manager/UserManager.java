@@ -6,6 +6,7 @@ import site.kael.cpa.console.core.cpa.manager.CpaApiKeyManager;
 
 import java.util.List;
 import org.springframework.stereotype.Component;
+import site.kael.cpa.console.core.auth.manager.PersistentLoginTokenManager;
 import site.kael.cpa.console.core.crypto.ApiKeyCrypto;
 import site.kael.cpa.console.core.user.dao.UserDao;
 import site.kael.cpa.console.core.user.model.User;
@@ -17,16 +18,27 @@ public class UserManager {
     private final UserDao userDao;
     private final ApiKeyCrypto apiKeyCrypto;
     private final CpaApiKeyManager cpaApiKeyManager;
+    private final PersistentLoginTokenManager persistentLoginTokenManager;
 
     public UserManager(UserDao userDao, ApiKeyCrypto apiKeyCrypto) {
-        this(userDao, apiKeyCrypto, null);
+        this(userDao, apiKeyCrypto, null, null);
+    }
+
+    public UserManager(UserDao userDao, ApiKeyCrypto apiKeyCrypto, CpaApiKeyManager cpaApiKeyManager) {
+        this(userDao, apiKeyCrypto, cpaApiKeyManager, null);
     }
 
     @Autowired
-    public UserManager(UserDao userDao, ApiKeyCrypto apiKeyCrypto, CpaApiKeyManager cpaApiKeyManager) {
+    public UserManager(
+            UserDao userDao,
+            ApiKeyCrypto apiKeyCrypto,
+            CpaApiKeyManager cpaApiKeyManager,
+            PersistentLoginTokenManager persistentLoginTokenManager
+    ) {
         this.userDao = userDao;
         this.apiKeyCrypto = apiKeyCrypto;
         this.cpaApiKeyManager = cpaApiKeyManager;
+        this.persistentLoginTokenManager = persistentLoginTokenManager;
     }
 
     public User findOrCreateByApiKey(String apiKey) {
@@ -60,6 +72,7 @@ public class UserManager {
 
     public void delete(long id) {
         userDao.delete(id);
+        if (persistentLoginTokenManager != null) persistentLoginTokenManager.revokeAllForUser(id);
     }
 
     public String apiKey(User user) {

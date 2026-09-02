@@ -69,7 +69,7 @@ onMounted(async () => {
         </button>
       </form>
 
-      <p class="login-hint">登录态仅在当前浏览器会话内有效。</p>
+      <p class="login-hint">登录状态默认保留 7 天。</p>
     </section>
   </main>
 </template>
