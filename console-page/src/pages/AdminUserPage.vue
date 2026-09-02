@@ -97,8 +97,11 @@ async function handleSubmit() {
   try {
     if (isEdit.value) await updateAdminUser(editUserId.value, { nickname: nickname.value, role: role.value })
     else await createAdminUser({ nickname: nickname.value, role: role.value })
+    // 保存请求成功后立即收起抽屉，避免刷新用户列表时让用户误以为保存失败。
+    drawerOpen.value = false
+    roleMenuOpen.value = false
+    editingUserId.value = null
     await loadUsers()
-    closeDrawer()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '保存失败，请重试'
   } finally {
