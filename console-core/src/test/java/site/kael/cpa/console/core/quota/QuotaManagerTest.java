@@ -48,6 +48,18 @@ class QuotaManagerTest {
     }
 
     @Test
+    void keepsInteractionsApiKeyDistinctWhenBaseUrlIsMissing() {
+        Credential credential = credential("Google Interactions", "apikey", "");
+        CredentialManager credentials = credentialManager(credential);
+        CpaApiKeyManager cpa = new CpaApiKeyManager((CpaApiClient) null, Duration.ZERO);
+
+        Map<String, Object> result = new QuotaManager(credentials, cpa).getQuota(credential.referenceId());
+
+        assertEquals("google interactions", result.get("provider"));
+        assertEquals("按量计费", result.get("tierName"));
+    }
+
+    @Test
     void recognizesOpenRouterApiKeyDomainAsUsageBased() {
         Credential credential = credential("unknown", "api_key", "https://openrouter.ai/api/v1");
         CredentialManager credentials = credentialManager(credential);

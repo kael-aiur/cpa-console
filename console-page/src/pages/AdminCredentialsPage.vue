@@ -116,20 +116,38 @@ onMounted(() => void loadCredentials())
 
       <div v-if="loading" class="admin-table-skeleton" aria-hidden="true"><span v-for="item in 5" :key="item"></span></div>
       <div v-else-if="filteredCredentials.length === 0" class="admin-empty-state"><h2>没有找到凭证</h2><p>请尝试更换搜索关键词。</p></div>
-      <div v-else class="admin-table-wrap">
-        <table class="admin-table credentials-table">
-          <thead><tr><th>凭证名称</th><th>凭证类型</th><th>状态</th><th>引用 ID</th><th>标签</th><th class="operation-column">操作</th></tr></thead>
-          <tbody>
-            <tr v-for="credential in filteredCredentials" :key="credential.id">
-              <td><strong class="credential-name">{{ credential.name }}</strong></td>
-              <td><span class="credential-type">{{ formatType(credential.credential_type) }}</span></td>
-              <td><span class="credential-status" :class="credential.enabled ? 'enabled' : 'disabled'"><i></i>{{ credential.enabled ? '可用' : '停用' }}</span></td>
-              <td><code>{{ credential.reference_id }}</code></td>
-              <td><div class="credential-tags"><span v-for="tag in credential.tags" :key="tag" class="file-tag">{{ tag }}</span></div></td>
-              <td class="operation-cell"><button type="button" class="table-action edit" @click="openEditor(credential)">修改</button></td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else>
+        <div class="admin-table-wrap credentials-desktop-list">
+          <table class="admin-table credentials-table">
+            <thead><tr><th>凭证名称</th><th>凭证类型</th><th>状态</th><th>引用 ID</th><th>标签</th><th class="operation-column">操作</th></tr></thead>
+            <tbody>
+              <tr v-for="credential in filteredCredentials" :key="credential.id">
+                <td><strong class="credential-name">{{ credential.name }}</strong></td>
+                <td><span class="credential-type">{{ formatType(credential.credential_type) }}</span></td>
+                <td><span class="credential-status" :class="credential.enabled ? 'enabled' : 'disabled'"><i></i>{{ credential.enabled ? '可用' : '停用' }}</span></td>
+                <td><code>{{ credential.reference_id }}</code></td>
+                <td><div class="credential-tags"><span v-for="tag in credential.tags" :key="tag" class="file-tag">{{ tag }}</span></div></td>
+                <td class="operation-cell"><button type="button" class="table-action edit" @click="openEditor(credential)">修改</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="credentials-mobile-list">
+          <article v-for="credential in filteredCredentials" :key="credential.id" class="credential-mobile-card">
+            <div class="credential-mobile-heading">
+              <strong class="credential-name">{{ credential.name }}</strong>
+              <button type="button" class="table-action edit" @click="openEditor(credential)">修改</button>
+            </div>
+            <div class="credential-mobile-meta">
+              <span class="credential-type">{{ formatType(credential.credential_type) }}</span>
+              <span class="credential-status" :class="credential.enabled ? 'enabled' : 'disabled'"><i></i>{{ credential.enabled ? '可用' : '停用' }}</span>
+            </div>
+            <code class="credential-mobile-reference">{{ credential.reference_id }}</code>
+            <div v-if="credential.tags.length" class="credential-tags">
+              <span v-for="tag in credential.tags" :key="tag" class="file-tag">{{ tag }}</span>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
 
