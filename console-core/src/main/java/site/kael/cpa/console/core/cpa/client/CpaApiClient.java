@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +32,7 @@ public class CpaApiClient {
 
     private final HttpClient httpClient;
     private final URI modelsUri;
+    private final URI responsesUri;
     private final URI managementApiKeysUri;
     private final String managementKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -42,6 +44,7 @@ public class CpaApiClient {
     public CpaApiClient(String baseUrl, Duration timeout, String managementKey) {
         String normalized = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.modelsUri = URI.create(normalized + "/v1/models");
+        this.responsesUri = URI.create(normalized + "/v1/responses");
         this.managementApiKeysUri = URI.create(normalized + "/v0/management/api-keys");
         this.managementKey = managementKey == null ? "" : managementKey.trim();
         this.httpClient = HttpClient.newBuilder().connectTimeout(timeout).build();
@@ -96,6 +99,25 @@ public class CpaApiClient {
             throw new CpaManagementException("CPA model list request was interrupted", exception);
         } catch (IOException exception) {
             throw new CpaManagementException("CPA model list request failed", exception);
+        }
+    }
+
+    public HttpResponse<InputStream> createResponseStream(String apiKey, JsonNode requestBody, Duration timeout) {
+        if (apiKey == null || apiKey.isBlank()) throw new CpaManagementException("CPA API key is required");
+        try {
+            HttpRequest request = HttpRequest.newBuilder(responsesUri)
+                    .timeout(timeout)
+                    .header("Authorization", "Bearer " + apiKey.trim())
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "text/event-stream")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
+                    .build();
+            return httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new CpaManagementException("CPA Responses request was interrupted", exception);
+        } catch (IOException exception) {
+            throw new CpaManagementException("CPA Responses request failed", exception);
         }
     }
 

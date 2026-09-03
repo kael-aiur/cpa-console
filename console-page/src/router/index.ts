@@ -5,6 +5,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import AdminUserPage from '@/pages/AdminUserPage.vue'
 import AdminCredentialsPage from '@/pages/AdminCredentialsPage.vue'
 import AdminUsagePage from '@/pages/AdminUsagePage.vue'
+import AdminModelExperiencePage from '@/pages/AdminModelExperiencePage.vue'
 import QuotaPage from '@/pages/QuotaPage.vue'
 import UsagePage from '@/pages/UsagePage.vue'
 import ModelsPage from '@/pages/ModelsPage.vue'
@@ -44,6 +45,12 @@ export const router = createRouter({
       component: AdminLayout,
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [{ path: '', name: 'admin-usage', component: AdminUsagePage, meta: { title: '用量统计' } }],
+    },
+    {
+      path: '/admin-model-experience',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [{ path: '', name: 'admin-model-experience', component: AdminModelExperiencePage, meta: { title: '模型体验' } }],
     },
   ],
 })

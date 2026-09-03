@@ -24,6 +24,7 @@ Run frontend commands from `console-page/` and Maven commands from the repositor
 - Java 21, four-space indentation, UTF-8 sources, and existing `site.kael.cpa.*` package structure.
 - Use UpperCamelCase for classes, lowerCamelCase for members, and end executable statements with semicolons.
 - TypeScript/Vue uses two-space indentation, `<script setup lang="ts">`, PascalCase component filenames, and the `@/*` alias for files under `console-page/src/`.
+- 前端所有样式都必须采用响应式编程，确保页面能够适配手机等小屏幕设备。
 - Keep XML formatting in POMs consistent with existing modules.
 
 ## Testing Guidelines
