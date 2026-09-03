@@ -93,7 +93,7 @@ const modelColors = ['#2d2a26', '#39bd92', '#d89c16', '#6d80d8']
 
 <template>
   <section class="page usage-page">
-    <header class="usage-heading"><div><span class="page-eyebrow">USAGE / ANALYTICS</span><h1>用量统计</h1><p>查看所有用户或指定用户的请求和 Token 使用情况。</p></div><button type="button" class="refresh-action" :disabled="loading" @click="load">刷新数据</button></header>
+    <header class="usage-heading"><div><div class="page-title-line"><span class="page-eyebrow">USAGE / ANALYTICS</span><h1>用量统计</h1></div></div><button type="button" class="refresh-action" :disabled="loading" @click="load">刷新数据</button></header>
 
     <section class="usage-filter-card">
       <div class="usage-filter-header"><span class="section-label">时间范围</span><span class="selected-range">{{ formatRange(range.start) }} — {{ formatRange(range.end) }}</span></div>

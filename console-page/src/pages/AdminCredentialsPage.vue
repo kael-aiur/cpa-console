@@ -92,9 +92,10 @@ onMounted(() => void loadCredentials())
   <section class="page admin-list-page">
     <header class="admin-page-heading">
       <div>
-        <span class="page-eyebrow">ADMIN / CREDENTIALS</span>
-        <h1>凭证管理</h1>
-        <p>查看 CPA 服务中的凭证映射关系，并维护凭证标签。</p>
+        <div class="page-title-line">
+          <span class="page-eyebrow">ADMIN / CREDENTIALS</span>
+          <h1>凭证管理</h1>
+        </div>
       </div>
       <button type="button" class="refresh-action" :disabled="refreshing" @click="loadCredentials">
         <svg :class="{ spinning: refreshing }" viewBox="0 0 24 24" aria-hidden="true">

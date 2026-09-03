@@ -84,9 +84,10 @@ onMounted(() => void loadModels())
   <section class="page models-page">
     <header class="admin-page-heading models-page-heading">
       <div>
-        <span class="page-eyebrow">MODELS / AVAILABLE</span>
-        <h1>可用模型</h1>
-        <p>查看当前 CPA 凭证支持的模型，并快速复制模型名。</p>
+        <div class="page-title-line">
+          <span class="page-eyebrow">MODELS / AVAILABLE</span>
+          <h1>可用模型</h1>
+        </div>
       </div>
       <div class="models-heading-actions">
         <button type="button" class="refresh-action" :disabled="refreshing" @click="loadModels">
