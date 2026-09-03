@@ -113,7 +113,10 @@ onMounted(() => {
   <section class="quota-page">
     <header class="page-heading">
       <div class="heading-copy">
-        <h1>额度查看</h1>
+        <div class="page-title-line">
+          <span class="page-eyebrow">QUOTA / OVERVIEW</span>
+          <h1>额度查看</h1>
+        </div>
         <p>
           <span>{{ files.length }} 个凭证</span>
           <span class="dot">·</span>

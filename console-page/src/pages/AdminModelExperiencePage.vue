@@ -109,9 +109,10 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
   <section class="page admin-model-experience-page">
     <header class="admin-page-heading model-experience-heading">
       <div>
-        <span class="page-eyebrow">ADMIN / PLAYGROUND</span>
-        <h1>模型体验</h1>
-        <p>选择模型进行临时对话，离开页面后对话内容不会保存。</p>
+        <div class="page-title-line">
+          <span class="page-eyebrow">ADMIN / PLAYGROUND</span>
+          <h1>模型体验</h1>
+        </div>
       </div>
     </header>
 

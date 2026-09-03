@@ -157,9 +157,10 @@ onMounted(() => {
   <section class="page admin-list-page">
     <header class="admin-page-heading">
       <div>
-        <span class="page-eyebrow">ADMIN / USERS</span>
-        <h1>用户管理</h1>
-        <p>查看和管理控制台用户及其 API Key。</p>
+        <div class="page-title-line">
+          <span class="page-eyebrow">ADMIN / USERS</span>
+          <h1>用户管理</h1>
+        </div>
       </div>
       <div class="admin-heading-actions">
         <button type="button" class="primary-action" @click="openAddDrawer">添加用户</button>
