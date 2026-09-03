@@ -5,6 +5,9 @@ import site.kael.cpa.console.core.cpa.model.CpaModel;
 import site.kael.cpa.console.core.credential.model.CpaCredential;
 
 import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.io.InputStream;
+import java.net.http.HttpResponse;
 import java.util.Map;
 
 import java.time.Duration;
@@ -24,6 +27,10 @@ public class CpaApiKeyManager {
 
     public String create() {
         return client.createApiKey(timeout);
+    }
+
+    public HttpResponse<InputStream> createResponseStream(String apiKey, JsonNode requestBody) {
+        return client.createResponseStream(apiKey, requestBody, timeout);
     }
 
     public List<CpaCredential> listCredentials() {

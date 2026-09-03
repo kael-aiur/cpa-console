@@ -4,7 +4,10 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import site.kael.cpa.console.core.cpa.client.CpaApiClient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.InetSocketAddress;
+import java.net.http.HttpResponse;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
@@ -37,6 +40,33 @@ class CpaApiClientTest {
             assertEquals("Google Interactions(AQ***xxxx)", credentials.get(0).name());
             assertEquals("Google Interactions", credentials.get(0).provider());
             assertEquals("", credentials.get(0).baseUrl());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void streamsResponsesFromOpenAiResponsesEndpoint() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/v1/responses", exchange -> {
+            assertEquals("Bearer user-key", exchange.getRequestHeaders().getFirst("Authorization"));
+            assertEquals("text/event-stream", exchange.getRequestHeaders().getFirst("Accept"));
+            String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            assertEquals(true, new ObjectMapper().readTree(requestBody).path("stream").asBoolean());
+            byte[] body = "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\"}\n\n".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            CpaApiClient client = new CpaApiClient("http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofSeconds(2), "management-key");
+            HttpResponse<InputStream> response = client.createResponseStream("user-key", new ObjectMapper().readTree("{\"model\":\"gpt-5\",\"input\":\"hi\",\"stream\":true}"), Duration.ofSeconds(2));
+            try (InputStream body = response.body()) {
+                assertEquals(200, response.statusCode());
+                assertEquals(true, new String(body.readAllBytes(), StandardCharsets.UTF_8).contains("response.output_text.delta"));
+            }
         } finally {
             server.stop(0);
         }
