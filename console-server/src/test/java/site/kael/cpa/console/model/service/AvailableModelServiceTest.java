@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AvailableModelServiceTest {
     @Test
-    void returnsTheCachedModelListForTheSameUser() {
+    void readsTheLocalModelListForEachRequest() {
         AtomicInteger loads = new AtomicInteger();
         AvailableModelManager modelManager = new AvailableModelManager(null, (CpaApiKeyManager) null) {
             @Override
@@ -37,7 +37,7 @@ class AvailableModelServiceTest {
         service.list(user);
         var cached = service.list(user);
 
-        assertEquals(1, loads.get());
+        assertEquals(2, loads.get());
         assertEquals(List.of("gpt-5"), cached.models().stream().map(model -> model.name()).toList());
     }
 }

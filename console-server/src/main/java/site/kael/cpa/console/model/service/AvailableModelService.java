@@ -1,59 +1,39 @@
 package site.kael.cpa.console.model.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import site.kael.cpa.console.core.model.model.AvailableModel;
 import site.kael.cpa.console.core.model.manager.AvailableModelManager;
+import site.kael.cpa.console.core.model.manager.LiteLlmModelManager;
 import site.kael.cpa.console.core.user.manager.UserManager;
 import site.kael.cpa.console.core.user.model.User;
 import site.kael.cpa.console.model.dto.AvailableModelListResponse;
 import site.kael.cpa.console.model.dto.AvailableModelResponse;
 import site.kael.cpa.console.model.dto.CodexModelCatalogResponse;
 
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 @Service
 public class AvailableModelService {
-    private static final Duration MODEL_CACHE_TTL = Duration.ofMinutes(10);
-
     private final AvailableModelManager availableModelManager;
-    private final UserManager userManager;
-    private final Map<String, CachedModelList> modelCache = new ConcurrentHashMap<>();
+    private final LiteLlmModelManager liteLlmModelManager;
 
-    public AvailableModelService(AvailableModelManager availableModelManager, UserManager userManager) {
+    public AvailableModelService(AvailableModelManager availableModelManager, UserManager ignoredUserManager) {
+        this(availableModelManager, ignoredUserManager, null);
+    }
+
+    @Autowired
+    public AvailableModelService(AvailableModelManager availableModelManager, UserManager ignoredUserManager, LiteLlmModelManager liteLlmModelManager) {
         this.availableModelManager = availableModelManager;
-        this.userManager = userManager;
+        this.liteLlmModelManager = liteLlmModelManager;
     }
 
     public AvailableModelListResponse list(User user) {
-        String cacheKey = user.apiKeyHash();
-        CachedModelList cached = modelCache.get(cacheKey);
-        if (cached != null && !cached.expired()) return cached.response();
-
-        var availableModels = availableModels(user);
-        var models = availableModels.stream().map(AvailableModelResponse::from).toList();
-        var tags = models.stream().flatMap(model -> model.tags().stream()).distinct().sorted().toList();
-        AvailableModelListResponse response = new AvailableModelListResponse(models, models.size(), tags);
-        modelCache.put(cacheKey, new CachedModelList(response));
-        return response;
+        var models = availableModelManager.list(user == null ? "" : user.apiKeyHash());
+        var responses = models.stream().map(AvailableModelResponse::from).toList();
+        var tags = responses.stream().flatMap(model -> model.tags().stream()).distinct().sorted().toList();
+        return new AvailableModelListResponse(responses, responses.size(), tags);
     }
 
     public CodexModelCatalogResponse codexModelCatalog(User user) {
-        return CodexModelCatalogResponse.from(availableModels(user));
-    }
-
-    private java.util.List<AvailableModel> availableModels(User user) {
-        return availableModelManager.list(userManager.apiKey(user));
-    }
-
-    private record CachedModelList(AvailableModelListResponse response, long expiresAt) {
-        private CachedModelList(AvailableModelListResponse response) {
-            this(response, System.currentTimeMillis() + MODEL_CACHE_TTL.toMillis());
-        }
-
-        private boolean expired() {
-            return System.currentTimeMillis() >= expiresAt;
-        }
+        return CodexModelCatalogResponse.from(availableModelManager.list(user == null ? "" : user.apiKeyHash()), modelId -> modelId == null || liteLlmModelManager == null ? null : liteLlmModelManager.find(modelId).orElse(null));
     }
 }

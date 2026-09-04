@@ -114,3 +114,11 @@ export function getAdminUsageSummary(range: { start: string; end: string }, user
 export function getAdminUsageRecords(range: { start: string; end: string }, page: number, pageSize: number, userId?: number | null): Promise<ApiResponse<AdminUsageRecordsResponse>> {
   return request(`/admin/usage/records?${usageQuery(range, userId)}&page=${page}&page_size=${pageSize}`, {}, '请求记录加载失败')
 }
+
+import type { AdminAvailableModelListResponse, AdminAvailableModel, AdminLiteLlmMetadataListResponse, AdminLiteLlmSyncConfig } from '@/types/admin'
+export function getAdminAvailableModels(): Promise<ApiResponse<AdminAvailableModelListResponse>> { return request('/admin/models', {}, '可用模型加载失败') }
+export function updateAdminAvailableModel(id: number, litellm_model_id: string | null): Promise<ApiResponse<AdminAvailableModel>> { return mutate(`/admin/models/${id}`, 'PATCH', { litellm_model_id }, '模型映射保存失败') }
+export function getAdminLiteLlmMetadata(): Promise<ApiResponse<AdminLiteLlmMetadataListResponse>> { return request('/admin/models/metadata', {}, '模型元数据加载失败') }
+export function getAdminLiteLlmSyncConfig(): Promise<ApiResponse<AdminLiteLlmSyncConfig>> { return request('/admin/models/metadata/sync-config', {}, '同步配置加载失败') }
+export function updateAdminLiteLlmSyncConfig(payload: AdminLiteLlmSyncConfig): Promise<ApiResponse<AdminLiteLlmSyncConfig>> { return mutate('/admin/models/metadata/sync-config', 'PUT', payload, '同步配置保存失败') }
+export function syncAdminLiteLlmMetadata(): Promise<ApiResponse<{ count: number }>> { return mutate('/admin/models/metadata/sync', 'POST', undefined, '元数据同步失败') }

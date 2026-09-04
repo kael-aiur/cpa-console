@@ -10,6 +10,8 @@ const menus = [
   { path: '/admin-model-experience', label: '模型体验', description: '与模型进行临时对话' },
   { path: '/admin-user', label: '用户管理', description: '账号与权限管理' },
   { path: '/admin-credentials', label: '凭证管理', description: '凭证与授权管理' },
+  { path: '/admin-models', label: '可用模型', description: 'CPA 模型与元数据映射' },
+  { path: '/admin-model-metadata', label: '元数据同步配置', description: 'LiteLLM 来源与代理设置' },
 ]
 const emit = defineEmits<{
   close: []

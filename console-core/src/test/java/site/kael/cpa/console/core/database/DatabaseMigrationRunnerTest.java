@@ -19,7 +19,7 @@ class DatabaseMigrationRunnerTest {
         runner.migrate();
 
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM schema_migrations", Integer.class));
+        assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM schema_migrations", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'usage_events'", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'persistent_login_tokens'", Integer.class));
     }

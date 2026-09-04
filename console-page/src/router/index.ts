@@ -6,6 +6,8 @@ import AdminUserPage from '@/pages/AdminUserPage.vue'
 import AdminCredentialsPage from '@/pages/AdminCredentialsPage.vue'
 import AdminUsagePage from '@/pages/AdminUsagePage.vue'
 import AdminModelExperiencePage from '@/pages/AdminModelExperiencePage.vue'
+import AdminAvailableModelsPage from '@/pages/AdminAvailableModelsPage.vue'
+import AdminModelMetadataPage from '@/pages/AdminModelMetadataPage.vue'
 import QuotaPage from '@/pages/QuotaPage.vue'
 import UsagePage from '@/pages/UsagePage.vue'
 import ModelsPage from '@/pages/ModelsPage.vue'
@@ -45,6 +47,18 @@ export const router = createRouter({
       component: AdminLayout,
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [{ path: '', name: 'admin-usage', component: AdminUsagePage, meta: { title: '用量统计' } }],
+    },
+    {
+      path: '/admin-models',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [{ path: '', name: 'admin-models', component: AdminAvailableModelsPage, meta: { title: '可用模型' } }],
+    },
+    {
+      path: '/admin-model-metadata',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [{ path: '', name: 'admin-model-metadata', component: AdminModelMetadataPage, meta: { title: '模型元数据同步配置' } }],
     },
     {
       path: '/admin-model-experience',
