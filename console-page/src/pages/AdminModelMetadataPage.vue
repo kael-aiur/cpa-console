@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { getAdminLiteLlmMetadata, getAdminLiteLlmSyncConfig, syncAdminLiteLlmMetadata, updateAdminLiteLlmSyncConfig } from '@/services/adminApi'
 import type { AdminLiteLlmMetadata, AdminLiteLlmSyncConfig } from '@/types/admin'
 
@@ -10,6 +10,24 @@ const saving = ref(false)
 const syncing = ref(false)
 const message = ref('')
 const selectedMetadata = ref<AdminLiteLlmMetadata | null>(null)
+const providerFilter = ref('')
+const modelNameFilter = ref('')
+const keywordFilter = ref('')
+
+const providers = computed(() => [...new Set(metadata.value.map((model) => model.provider).filter(Boolean))].sort())
+const filteredMetadata = computed(() => {
+  const provider = providerFilter.value.trim().toLowerCase()
+  const modelName = modelNameFilter.value.trim().toLowerCase()
+  const keyword = keywordFilter.value.trim().toLowerCase()
+  return metadata.value.filter((model) => {
+    const modelId = model.model_id.toLowerCase()
+    const rawJson = model.metadata_json.toLowerCase()
+    if (provider && !model.provider.toLowerCase().includes(provider)) return false
+    if (modelName && !modelId.includes(modelName)) return false
+    if (keyword && !modelId.includes(keyword) && !rawJson.includes(keyword)) return false
+    return true
+  })
+})
 
 async function load() {
   loading.value = true
@@ -56,10 +74,19 @@ onMounted(() => void load())
       </form>
     </section>
     <section class="admin-list-card metadata-list-card">
-      <div class="admin-list-toolbar"><div class="admin-list-summary"><strong>{{ metadata.length }}</strong><span>条元数据</span></div><span class="field-hint">后台每小时自动同步 · 点击卡片查看原始 JSON</span></div>
+      <div class="admin-list-toolbar metadata-list-toolbar">
+        <div class="admin-list-summary"><strong>{{ filteredMetadata.length }}</strong><span>条匹配结果</span></div>
+        <span class="field-hint">后台每小时自动同步 · 点击卡片查看原始 JSON</span>
+      </div>
+      <div class="metadata-search-grid">
+        <label class="metadata-search-field"><span>供应商</span><input v-model="providerFilter" list="metadata-provider-options" type="search" placeholder="搜索或选择供应商" /><datalist id="metadata-provider-options"><option v-for="provider in providers" :key="provider" :value="provider" /></datalist></label>
+        <label class="metadata-search-field"><span>模型名</span><input v-model="modelNameFilter" type="search" placeholder="按模型 ID 搜索" /></label>
+        <label class="metadata-search-field"><span>模型关键词</span><input v-model="keywordFilter" type="search" placeholder="搜索模型 ID 或原始 JSON" /></label>
+      </div>
       <div v-if="loading" class="admin-table-skeleton"><span v-for="i in 5" :key="i"></span></div>
       <div v-else-if="metadata.length === 0" class="admin-empty-state"><h2>暂无模型元数据</h2><p>请先执行同步。</p></div>
-      <div v-else class="metadata-card-list"><button v-for="model in metadata.slice(0, 200)" :key="model.model_id" type="button" class="metadata-card" @click="openMetadata(model)"><span class="metadata-card-model-id" :title="model.model_id">{{ model.model_id }}</span><span class="metadata-card-line"><span>provider：{{ model.provider || '—' }}</span><span>模式：{{ model.mode || '—' }}</span></span><span class="metadata-card-line"><span>最大输入 Token：{{ formatNumber(model.max_input_tokens) }}</span><span>最大输出 Token：{{ formatNumber(model.max_output_tokens) }}</span></span></button></div>
+      <div v-else-if="filteredMetadata.length === 0" class="admin-empty-state"><h2>没有找到匹配的元数据</h2><p>请尝试调整供应商、模型名或关键词。</p></div>
+      <div v-else class="metadata-card-list"><button v-for="model in filteredMetadata.slice(0, 200)" :key="model.model_id" type="button" class="metadata-card" @click="openMetadata(model)"><span class="metadata-card-model-id" :title="model.model_id">{{ model.model_id }}</span><span class="metadata-card-line"><span>provider：{{ model.provider || '—' }}</span><span>模式：{{ model.mode || '—' }}</span></span><span class="metadata-card-line"><span>最大输入 Token：{{ formatNumber(model.max_input_tokens) }}</span><span>最大输出 Token：{{ formatNumber(model.max_output_tokens) }}</span></span></button></div>
     </section>
     <Transition name="drawer"><div v-if="selectedMetadata" class="drawer-layer" @click.self="closeMetadata"><aside class="edit-drawer metadata-json-drawer" aria-label="模型原始 JSON"><header class="drawer-header"><div><span class="page-eyebrow">RAW MODEL METADATA</span><h2>{{ selectedMetadata.model_id }}</h2></div><button type="button" class="drawer-close" aria-label="关闭" @click="closeMetadata">×</button></header><div class="metadata-json-content"><pre><code>{{ formatJson(selectedMetadata.metadata_json) }}</code></pre></div></aside></div></Transition>
   </section>
@@ -67,6 +94,10 @@ onMounted(() => void load())
 
 <style scoped>
 .metadata-page .metadata-list-card { margin-top: 20px; }
+.metadata-search-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0 24px 20px; }
+.metadata-search-field { display: grid; gap: 7px; color: #5f584f; font-size: 12px; font-weight: 650; }
+.metadata-search-field input { min-width: 0; min-height: 38px; padding: 0 11px; border: 1px solid #d9d2c7; border-radius: 8px; background: #fffefa; color: #29251f; font: inherit; font-weight: 400; }
+.metadata-search-field input:focus { border-color: #8d7c63; outline: 2px solid rgba(141, 124, 99, .15); }
 .metadata-config-form { display: grid; gap: 18px; padding: 24px; }
 .metadata-config-form .drawer-field { margin: 0; }
 .metadata-proxy-toggle { display: inline-flex; align-items: center; gap: 10px; color: var(--ink, #28251f); font-size: 14px; cursor: pointer; }
@@ -82,5 +113,6 @@ onMounted(() => void load())
 .metadata-json-content { min-height: 0; flex: 1; overflow: auto; padding: 24px; background: #292722; }
 .metadata-json-content pre { margin: 0; color: #f4efe5; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; tab-size: 2; }
 .metadata-json-content code { font: inherit; }
+@media (max-width: 700px) { .metadata-search-grid { grid-template-columns: 1fr; padding-left: 16px; padding-right: 16px; } }
 @media (max-width: 640px) { .metadata-config-form, .metadata-card-list { padding-left: 16px; padding-right: 16px; } .metadata-proxy-fields { grid-template-columns: 1fr; } .metadata-config-footer { align-items: flex-start; flex-direction: column; } .metadata-card-line { display: grid; gap: 4px; } }
 </style>
