@@ -493,7 +493,7 @@ public class CpaApiClient {
         Map<String, Object> window = new LinkedHashMap<>();
         window.put("label", label);
         window.put("remainingPercent", Math.max(0, Math.min(100, 100 - node.path("used_percent").asDouble(0))));
-        window.put("resetAt", resetAt(node.path("reset_at")));
+        window.put("resetAt", resetAtSeconds(node.path("reset_at")));
         windows.add(window);
     }
 
@@ -539,6 +539,13 @@ public class CpaApiClient {
     private String resetAt(JsonNode value) {
         if (value.isNumber()) {
             try { return java.time.Instant.ofEpochMilli(value.asLong()).toString(); } catch (RuntimeException ignored) { }
+        }
+        return value.asText("");
+    }
+
+    private String resetAtSeconds(JsonNode value) {
+        if (value.isNumber()) {
+            try { return java.time.Instant.ofEpochSecond(value.asLong()).toString(); } catch (RuntimeException ignored) { }
         }
         return value.asText("");
     }

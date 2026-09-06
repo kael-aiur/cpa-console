@@ -10,6 +10,9 @@ import java.net.http.HttpResponse;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -67,6 +70,30 @@ class CpaApiClientTest {
                 assertEquals(200, response.statusCode());
                 assertEquals(true, new String(body.readAllBytes(), StandardCharsets.UTF_8).contains("response.output_text.delta"));
             }
+        } finally {
+            server.stop(0);
+        }
+    }
+
+
+    @Test
+    void convertsCodexResetAtFromUnixSeconds() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/v0/management/api-call", exchange -> {
+            String upstream = "{\"plan_type\":\"pro\",\"rate_limit\":{\"primary_window\":{\"used_percent\":12,\"reset_at\":1782951970},\"secondary_window\":{\"used_percent\":48,\"reset_at\":1787290791}}}";
+            byte[] body = new ObjectMapper().writeValueAsString(Map.of("status_code", 200, "body", upstream)).getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            CpaApiClient client = new CpaApiClient("http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofSeconds(2), "management-key");
+            Map<String, Object> quota = client.getAuthFileQuota("codex-id", "codex", "", Duration.ofSeconds(2));
+            List<Map<String, Object>> windows = (List<Map<String, Object>>) quota.get("windows");
+
+            assertEquals(Instant.ofEpochSecond(1782951970).toString(), windows.get(0).get("resetAt"));
+            assertEquals(Instant.ofEpochSecond(1787290791).toString(), windows.get(1).get("resetAt"));
         } finally {
             server.stop(0);
         }
