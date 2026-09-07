@@ -51,10 +51,23 @@ export interface QuotaWindow {
   resetAt: string
 }
 
+export interface ActiveResetCredit {
+  id: string
+  status: string
+  grantedAt?: string
+  expiresAt: string
+}
+
+export interface ActiveResetCredits {
+  availableCount: number
+  credits: ActiveResetCredit[]
+}
+
 export interface AccountQuota {
   provider: string
   tierName: string
   windows: QuotaWindow[]
+  activeResetCredits?: ActiveResetCredits
 }
 
 export interface QuotaEndpointResponse {

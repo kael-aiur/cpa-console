@@ -29,6 +29,7 @@ import java.util.UUID;
 
 public class CpaApiClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(CpaApiClient.class);
+    private static final String CODEX_RATE_LIMIT_RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits";
 
     private final HttpClient httpClient;
     private final URI modelsUri;
@@ -302,13 +303,59 @@ public class CpaApiClient {
         }
         JsonNode body = callManagementApi(referenceId, method, url, headers, data, timeout);
         return switch (normalized) {
-            case "codex", "openai" -> parseCodexQuota(body);
+            case "codex", "openai" -> {
+                Map<String, Object> result = parseCodexQuota(body);
+                try {
+                    Map<String, Object> resetCredits = getCodexResetCredits(referenceId, timeout);
+                    if (!resetCredits.isEmpty()) result.put("activeResetCredits", resetCredits);
+                } catch (CpaManagementException exception) {
+                    // Reset-credit details are supplementary; keep quota rendering available
+                    // when an older CPA version does not expose this endpoint.
+                    LOGGER.warn("Unable to load Codex active reset credits for {}", referenceId, exception);
+                }
+                yield result;
+            }
             case "claude", "anthropic" -> parseAnthropicQuota(body);
             case "kimi" -> parseKimiQuota(body);
             case "antigravity" -> parseAntigravityQuota(body);
             case "gemini" -> parseAntigravityQuota(body);
             default -> Map.of();
         };
+    }
+
+    private Map<String, Object> getCodexResetCredits(String referenceId, Duration timeout) {
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("Authorization", "Bearer $TOKEN$");
+        headers.put("Accept", "application/json");
+        headers.put("OpenAI-Beta", "codex-1");
+        headers.put("Originator", "Codex Desktop");
+        JsonNode body = callManagementApi(referenceId, "GET", CODEX_RATE_LIMIT_RESET_CREDITS_URL, headers, "", timeout);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        JsonNode availableCount = body.path("available_count");
+        if (!availableCount.isNumber()) availableCount = body.path("availableCount");
+        if (availableCount.isNumber() && availableCount.asInt() >= 0) {
+            result.put("availableCount", availableCount.asInt());
+        }
+
+        List<Map<String, Object>> credits = new ArrayList<>();
+        JsonNode creditNodes = body.path("credits");
+        if (creditNodes.isArray()) {
+            for (JsonNode credit : creditNodes) {
+                if (!"codex_rate_limits".equals(firstText(credit, "reset_type", "resetType"))
+                        || !"available".equals(credit.path("status").asText(""))) continue;
+                String expiresAt = firstText(credit, "expires_at", "expiresAt");
+                if (expiresAt.isBlank()) continue;
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", firstText(credit, "id"));
+                item.put("status", "available");
+                item.put("grantedAt", firstText(credit, "granted_at", "grantedAt"));
+                item.put("expiresAt", expiresAt);
+                credits.add(item);
+            }
+        }
+        result.put("credits", credits);
+        return result;
     }
 
     private JsonNode loadApiKeyUsage(Duration timeout) {
