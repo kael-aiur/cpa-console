@@ -118,6 +118,19 @@ function formatResetTime(value: string): string {
     : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+function formatResetDateTime(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString([], {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+}
+
 onMounted(() => {
   void loadFiles()
 })
@@ -213,6 +226,28 @@ onMounted(() => {
 
           <div class="tag-list">
             <span v-for="tag in file.tags" :key="tag" class="file-tag">{{ tag }}</span>
+            <span
+              v-if="getQuota(file)?.activeResetCredits"
+              class="reset-credits-wrap"
+              tabindex="0"
+              :aria-label="`可用重置 ${getQuota(file)?.activeResetCredits?.availableCount ?? 0} 次`"
+            >
+              <span class="reset-credits-tag">
+                可用重置 {{ getQuota(file)?.activeResetCredits?.availableCount ?? 0 }} 次
+              </span>
+              <span class="reset-credits-tooltip" role="tooltip">
+                <strong>主动重置过期时间</strong>
+                <template v-if="getQuota(file)?.activeResetCredits?.credits.length">
+                  <span
+                    v-for="(credit, creditIndex) in getQuota(file)?.activeResetCredits?.credits"
+                    :key="credit.id || `${credit.expiresAt}-${creditIndex}`"
+                  >
+                    第 {{ creditIndex + 1 }} 次 · {{ formatResetDateTime(credit.expiresAt) }} 过期
+                  </span>
+                </template>
+                <span v-else>暂无可用主动重置明细</span>
+              </span>
+            </span>
           </div>
 
           <div v-if="isQuotaLoading(file)" class="quota-loading" aria-label="正在加载配额">

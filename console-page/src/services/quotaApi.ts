@@ -1,5 +1,5 @@
 import type { ApiResponse } from '@/types/app'
-import type { AccountQuota, QuotaEndpointResponse, QuotaFile, QuotaFileListResponse, QuotaWindow } from '@/types/quota'
+import type { AccountQuota, ActiveResetCredit, ActiveResetCredits, QuotaEndpointResponse, QuotaFile, QuotaFileListResponse, QuotaWindow } from '@/types/quota'
 
 interface BackendProviderListResponse { providers: QuotaFile[] }
 interface BackendQuotaResponse { quota: Record<string, unknown> }
@@ -48,10 +48,36 @@ function normalizeProvider(provider: QuotaFile): QuotaFile {
 
 function normalizeQuota(raw: Record<string, unknown>, provider: QuotaFile): AccountQuota {
   const windows = Array.isArray(raw.windows) ? raw.windows as QuotaWindow[] : []
+  const rawResetCredits = raw.activeResetCredits
+  const resetCredits = rawResetCredits && typeof rawResetCredits === 'object'
+    ? rawResetCredits as Record<string, unknown>
+    : null
+  const credits = resetCredits && Array.isArray(resetCredits.credits)
+    ? resetCredits.credits
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+      .map((item): ActiveResetCredit | null => {
+        const expiresAt = typeof item.expiresAt === 'string' ? item.expiresAt : ''
+        if (!expiresAt) return null
+        return {
+          id: typeof item.id === 'string' ? item.id : '',
+          status: typeof item.status === 'string' ? item.status : 'available',
+          grantedAt: typeof item.grantedAt === 'string' ? item.grantedAt : undefined,
+          expiresAt,
+        }
+      })
+      .filter((item): item is ActiveResetCredit => item !== null)
+    : []
+  const availableCount = resetCredits && typeof resetCredits.availableCount === 'number'
+    ? resetCredits.availableCount
+    : null
+  const activeResetCredits: ActiveResetCredits | undefined = availableCount !== null
+    ? { availableCount, credits }
+    : undefined
   return {
     provider: typeof raw.provider === 'string' ? raw.provider : provider.provider,
     tierName: typeof raw.tierName === 'string' ? raw.tierName : provider.provider,
     windows,
+    activeResetCredits,
   }
 }
 

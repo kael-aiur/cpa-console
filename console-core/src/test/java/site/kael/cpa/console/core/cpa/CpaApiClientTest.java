@@ -100,6 +100,36 @@ class CpaApiClientTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void includesAvailableCodexActiveResetCreditsInQuota() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/v0/management/api-call", exchange -> {
+            String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            String upstream = request.contains("rate-limit-reset-credits")
+                    ? "{\"available_count\":2,\"credits\":[{\"id\":\"credit-1\",\"reset_type\":\"codex_rate_limits\",\"status\":\"available\",\"expires_at\":\"2026-09-10T00:00:00Z\"},{\"id\":\"used-credit\",\"reset_type\":\"codex_rate_limits\",\"status\":\"consumed\",\"expires_at\":\"2026-09-09T00:00:00Z\"},{\"id\":\"credit-2\",\"resetType\":\"codex_rate_limits\",\"status\":\"available\",\"expiresAt\":\"2026-09-12T00:00:00Z\"}]}"
+                    : "{\"plan_type\":\"pro\",\"rate_limit\":{\"primary_window\":{\"used_percent\":12,\"reset_at\":1782951970}}}";
+            byte[] body = new ObjectMapper().writeValueAsString(Map.of("status_code", 200, "body", upstream)).getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            CpaApiClient client = new CpaApiClient("http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofSeconds(2), "management-key");
+            Map<String, Object> quota = client.getAuthFileQuota("codex-id", "codex", "", Duration.ofSeconds(2));
+            Map<String, Object> resetCredits = (Map<String, Object>) quota.get("activeResetCredits");
+            List<Map<String, Object>> credits = (List<Map<String, Object>>) resetCredits.get("credits");
+
+            assertEquals(2, resetCredits.get("availableCount"));
+            assertEquals(2, credits.size());
+            assertEquals("2026-09-10T00:00:00Z", credits.get(0).get("expiresAt"));
+            assertEquals("2026-09-12T00:00:00Z", credits.get(1).get("expiresAt"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void listsModelsFromOpenAiCompatibleEndpoint() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/v1/models", exchange -> {
