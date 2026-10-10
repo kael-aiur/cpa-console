@@ -53,6 +53,11 @@ async function loadQuota(credential: AdminCredential, listGeneration = generatio
   }
 }
 
+async function refreshQuota(credential: AdminCredential) {
+  if (quotaLoading.value[credential.id] || resetting.value[credential.id]) return
+  await loadQuota(credential)
+}
+
 async function resetQuota(credential: AdminCredential) {
   if (!canReset(credential) || resetting.value[credential.id] || resetBlocked.value[credential.id]) return
   if (!window.confirm(`确认重置 ${credential.name} 的额度并清除 CPA 冷却状态？此操作可能消耗可用重置次数。`)) return
@@ -206,13 +211,20 @@ onMounted(() => void loadCredentials())
                 <td><strong class="credential-name">{{ credential.name }}</strong></td>
                 <td><span class="credential-type">{{ formatType(credential.credential_type) }}</span></td>
                 <td><span class="credential-status" :class="credential.enabled ? 'enabled' : 'disabled'"><i></i>{{ credential.enabled ? '可用' : '停用' }}</span></td>
-                <td class="credential-quota-cell"><CredentialQuotaDisplay :quota="quotas[credential.id]" :loading="quotaLoading[credential.id]" :error="quotaErrors[credential.id]" @retry="loadQuota(credential)" /></td>
+                <td class="credential-quota-cell"><CredentialQuotaDisplay :quota="quotas[credential.id]" :loading="quotaLoading[credential.id]" :error="quotaErrors[credential.id]" @retry="refreshQuota(credential)" /></td>
                 <td><code>{{ credential.reference_id }}</code></td>
                 <td><div class="credential-tags"><span v-for="tag in credential.tags" :key="tag" class="file-tag">{{ tag }}</span></div></td>
                 <td class="operation-cell">
                   <div class="credential-actions">
-                    <button type="button" class="table-action edit" @click="openEditor(credential)">修改</button>
-                    <button v-if="canReset(credential)" type="button" class="table-action" :disabled="resetting[credential.id] || resetBlocked[credential.id]" @click="resetQuota(credential)">{{ resetting[credential.id] ? '重置中…' : '重置' }}</button>
+                    <button type="button" class="table-action edit" title="修改标签" :aria-label="`修改 ${credential.name} 的标签`" @click="openEditor(credential)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1 12-12a2.83 2.83 0 0 0-4-4L4 15l-1 6Z" /></svg>
+                    </button>
+                    <button type="button" class="table-action credential-action-refresh" :disabled="quotaLoading[credential.id] || resetting[credential.id]" :title="quotaLoading[credential.id] ? '刷新中…' : '刷新额度'" :aria-label="`${quotaLoading[credential.id] ? '正在刷新' : '刷新'} ${credential.name} 的额度`" :aria-busy="quotaLoading[credential.id] === true" @click="refreshQuota(credential)">
+                      <svg :class="{ 'credential-icon-spinning': quotaLoading[credential.id] }" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a9 9 0 0 0-15-2L3 8m0-5v5h5M4 17a9 9 0 0 0 15 2l2-3m0 5v-5h-5" /></svg>
+                    </button>
+                    <button v-if="canReset(credential)" type="button" class="table-action credential-action-reset" :disabled="resetting[credential.id] || resetBlocked[credential.id]" :title="resetting[credential.id] ? '重置中…' : resetBlocked[credential.id] ? '重置结果未完全确认，请先核实状态' : '重置额度与冷却'" :aria-label="`${resetting[credential.id] ? '正在重置' : '重置'} ${credential.name} 的额度与冷却`" :aria-busy="resetting[credential.id] === true" @click="resetQuota(credential)">
+                      <svg :class="{ 'credential-icon-spinning': resetting[credential.id] }" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2.6 8.4M3 4v6h6" /><circle cx="12" cy="12" r="4" /><path d="M12 9.5V12l1.7 1" /></svg>
+                    </button>
                   </div>
                   <p v-if="resetMessages[credential.id]" class="credential-reset-message" role="status">{{ resetMessages[credential.id] }}</p>
                 </td>
@@ -225,15 +237,22 @@ onMounted(() => void loadCredentials())
             <div class="credential-mobile-heading">
               <strong class="credential-name">{{ credential.name }}</strong>
               <div class="credential-actions">
-                <button type="button" class="table-action edit" @click="openEditor(credential)">修改</button>
-                <button v-if="canReset(credential)" type="button" class="table-action" :disabled="resetting[credential.id] || resetBlocked[credential.id]" @click="resetQuota(credential)">{{ resetting[credential.id] ? '重置中…' : '重置' }}</button>
+                <button type="button" class="table-action edit" title="修改标签" :aria-label="`修改 ${credential.name} 的标签`" @click="openEditor(credential)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1 12-12a2.83 2.83 0 0 0-4-4L4 15l-1 6Z" /></svg>
+                </button>
+                <button type="button" class="table-action credential-action-refresh" :disabled="quotaLoading[credential.id] || resetting[credential.id]" :title="quotaLoading[credential.id] ? '刷新中…' : '刷新额度'" :aria-label="`${quotaLoading[credential.id] ? '正在刷新' : '刷新'} ${credential.name} 的额度`" :aria-busy="quotaLoading[credential.id] === true" @click="refreshQuota(credential)">
+                  <svg :class="{ 'credential-icon-spinning': quotaLoading[credential.id] }" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a9 9 0 0 0-15-2L3 8m0-5v5h5M4 17a9 9 0 0 0 15 2l2-3m0 5v-5h-5" /></svg>
+                </button>
+                <button v-if="canReset(credential)" type="button" class="table-action credential-action-reset" :disabled="resetting[credential.id] || resetBlocked[credential.id]" :title="resetting[credential.id] ? '重置中…' : resetBlocked[credential.id] ? '重置结果未完全确认，请先核实状态' : '重置额度与冷却'" :aria-label="`${resetting[credential.id] ? '正在重置' : '重置'} ${credential.name} 的额度与冷却`" :aria-busy="resetting[credential.id] === true" @click="resetQuota(credential)">
+                  <svg :class="{ 'credential-icon-spinning': resetting[credential.id] }" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2.6 8.4M3 4v6h6" /><circle cx="12" cy="12" r="4" /><path d="M12 9.5V12l1.7 1" /></svg>
+                </button>
               </div>
             </div>
             <div class="credential-mobile-meta">
               <span class="credential-type">{{ formatType(credential.credential_type) }}</span>
               <span class="credential-status" :class="credential.enabled ? 'enabled' : 'disabled'"><i></i>{{ credential.enabled ? '可用' : '停用' }}</span>
             </div>
-            <CredentialQuotaDisplay :quota="quotas[credential.id]" :loading="quotaLoading[credential.id]" :error="quotaErrors[credential.id]" @retry="loadQuota(credential)" />
+            <CredentialQuotaDisplay :quota="quotas[credential.id]" :loading="quotaLoading[credential.id]" :error="quotaErrors[credential.id]" @retry="refreshQuota(credential)" />
             <p v-if="resetMessages[credential.id]" class="credential-reset-message" role="status">{{ resetMessages[credential.id] }}</p>
             <code class="credential-mobile-reference">{{ credential.reference_id }}</code>
             <div v-if="credential.tags.length" class="credential-tags">
@@ -266,10 +285,72 @@ onMounted(() => void loadCredentials())
 <style scoped>
 .credentials-table { min-width: 1100px; }
 .credential-quota-cell { min-width: 240px; white-space: normal; }
-.credential-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.credential-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.credential-actions .table-action {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 4%, transparent);
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.credential-actions .table-action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--text-primary) 25%, var(--border-color));
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--bg-primary));
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--text-primary) 8%, transparent);
+  transform: translateY(-1px);
+}
+.credential-actions .credential-action-refresh {
+  color: #28756b;
+  border-color: color-mix(in srgb, #28756b 25%, var(--border-color));
+  background: color-mix(in srgb, #28756b 7%, var(--bg-primary));
+}
+.credential-actions .credential-action-refresh:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #28756b 45%, var(--border-color));
+  background: color-mix(in srgb, #28756b 13%, var(--bg-primary));
+}
+.credential-actions .credential-action-reset {
+  color: #a85d26;
+  border-color: color-mix(in srgb, #a85d26 25%, var(--border-color));
+  background: color-mix(in srgb, #a85d26 7%, var(--bg-primary));
+}
+.credential-actions .credential-action-reset:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #a85d26 45%, var(--border-color));
+  background: color-mix(in srgb, #a85d26 13%, var(--bg-primary));
+}
+.credential-actions .table-action:focus-visible {
+  outline: 2px solid var(--text-secondary);
+  outline-offset: 3px;
+}
+.credential-actions .table-action:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.credential-actions svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.credential-icon-spinning { animation: credential-icon-spin 1s linear infinite; }
+@keyframes credential-icon-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .credential-icon-spinning { animation: none; }
+  .credential-actions .table-action { transition: none; }
+  .credential-actions .table-action:hover:not(:disabled) { transform: none; }
+}
 .credential-reset-message { max-width: 180px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; color: var(--text-secondary); }
 .credential-actions button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 768px) {
+  .credential-actions .table-action { width: 40px; min-width: 40px; height: 40px; }
   .credential-mobile-heading { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
   .credential-reset-message { max-width: 100%; }
 }
