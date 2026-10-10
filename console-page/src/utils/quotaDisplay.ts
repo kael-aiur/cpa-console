@@ -62,3 +62,22 @@ export function getRecentSuccessRate(file: { success: number; failed: number }):
   const total = file.success + file.failed
   return total > 0 ? (file.success / total) * 100 : null
 }
+
+export function formatResetTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  // Some providers only return a clock time, while others include the exact
+  // reset date. Keep the compact display for the former and show both parts
+  // whenever the upstream value contains a calendar date.
+  const hasCalendarDate = /(?:^|\D)\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:\D|$)/.test(value)
+  return hasCalendarDate
+    ? date.toLocaleString([], {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}

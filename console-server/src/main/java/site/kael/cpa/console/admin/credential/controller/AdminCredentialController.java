@@ -2,11 +2,14 @@ package site.kael.cpa.console.admin.credential.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.kael.cpa.console.admin.credential.dto.AdminCredentialListResponse;
+import site.kael.cpa.console.admin.credential.dto.AdminCredentialResetResponse;
+import site.kael.cpa.console.quota.dto.QuotaInfoResponse;
 import site.kael.cpa.console.admin.credential.dto.AdminCredentialResponse;
 import site.kael.cpa.console.admin.credential.dto.AdminCredentialUpdateRequest;
 import site.kael.cpa.console.admin.credential.service.AdminCredentialService;
@@ -23,6 +26,16 @@ public class AdminCredentialController {
     @GetMapping
     public AdminCredentialListResponse list() {
         return adminCredentialService.list();
+    }
+
+    @GetMapping("/{id}/quota")
+    public QuotaInfoResponse quota(@PathVariable("id") long id) {
+        return adminCredentialService.getQuota(id);
+    }
+
+    @PostMapping("/{id}/reset-quota")
+    public AdminCredentialResetResponse resetQuota(@PathVariable("id") long id) {
+        return adminCredentialService.resetQuota(id);
     }
 
     @PatchMapping("/{id}")

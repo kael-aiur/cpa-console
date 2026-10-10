@@ -29,6 +29,10 @@ public class CredentialManager {
         }
     }
 
+    public Optional<Credential> findById(long id) {
+        return credentialDao.findById(id);
+    }
+
     public Optional<Credential> findByReferenceId(String referenceId) {
         return credentialDao.findByReferenceId(referenceId);
     }

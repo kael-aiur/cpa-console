@@ -13,7 +13,7 @@ async function readError(response: Response, fallback: string): Promise<Error> {
   }
   if (response.status === 401) return new Error('登录状态已失效，请重新登录')
   if (response.status === 403) return new Error('没有权限执行此操作')
-  if (response.status === 404) return new Error('用户不存在')
+  if (response.status === 404) return new Error('请求的资源不存在')
   return new Error(fallback)
 }
 
@@ -63,7 +63,9 @@ export function deleteAdminUser(userId: number): Promise<ApiResponse<null>> {
   return mutate(`/admin/users/${userId}`, 'DELETE', undefined, '用户删除失败，请重试')
 }
 
-import type { AdminCredential, AdminCredentialListResponse } from '@/types/credentials'
+import { normalizeQuota } from '@/services/quotaApi'
+import type { AccountQuota } from '@/types/quota'
+import type { AdminCredential, AdminCredentialListResponse, AdminCredentialResetResponse } from '@/types/credentials'
 
 export function getAdminCredentials(): Promise<ApiResponse<AdminCredentialListResponse>> {
   return request('/admin/credentials', {}, '凭证列表加载失败')
@@ -122,3 +124,44 @@ export function getAdminLiteLlmMetadata(): Promise<ApiResponse<AdminLiteLlmMetad
 export function getAdminLiteLlmSyncConfig(): Promise<ApiResponse<AdminLiteLlmSyncConfig>> { return request('/admin/models/metadata/sync-config', {}, '同步配置加载失败') }
 export function updateAdminLiteLlmSyncConfig(payload: AdminLiteLlmSyncConfig): Promise<ApiResponse<AdminLiteLlmSyncConfig>> { return mutate('/admin/models/metadata/sync-config', 'PUT', payload, '同步配置保存失败') }
 export function syncAdminLiteLlmMetadata(): Promise<ApiResponse<{ count: number }>> { return mutate('/admin/models/metadata/sync', 'POST', undefined, '元数据同步失败') }
+
+export async function getAdminCredentialQuota(credential: AdminCredential): Promise<AccountQuota> {
+  const response = await request<{ quota: Record<string, unknown> }>(
+    `/admin/credentials/${credential.id}/quota`, {}, '额度查询失败',
+  )
+  return normalizeQuota(response.data.quota, credential)
+}
+
+export class CredentialResetError extends Error {
+  constructor(public result: AdminCredentialResetResponse) {
+    super(result.message)
+  }
+}
+
+export async function resetAdminCredentialQuota(id: number): Promise<AdminCredentialResetResponse> {
+  const token = await getCsrfToken()
+  const response = await fetch(`/admin/credentials/${id}/reset-quota`, {
+    method: 'POST', credentials: 'include', headers: { 'X-XSRF-TOKEN': token },
+  }).catch(() => {
+    throw new CredentialResetError({ status: 'error', quota_reset: 'unknown', cooldown_reset: 'unknown',
+      message: '请求连接中断，重置结果不确定，请先检查额度，勿直接重复重置' })
+  })
+  if (!response.ok) {
+    // Preserve stage outcomes from a non-2xx response instead of discarding partial success.
+    const body = await response.clone().json().catch(() => null) as AdminCredentialResetResponse | null
+    if (body?.quota_reset) throw new CredentialResetError(body)
+    if (response.status >= 500) throw new CredentialResetError({ status: 'error', quota_reset: 'unknown', cooldown_reset: 'unknown',
+      message: '重置结果未确认，请先检查额度，勿直接重复重置' })
+    throw await readError(response, '额度重置失败')
+  }
+  try {
+    const body = await response.json() as AdminCredentialResetResponse
+    if (body.status !== 'ok' || body.quota_reset !== 'completed' || body.cooldown_reset !== 'completed') {
+      throw new Error('Unconfirmed reset response')
+    }
+    return body
+  } catch {
+    throw new CredentialResetError({ status: 'error', quota_reset: 'unknown', cooldown_reset: 'unknown',
+      message: '重置结果未确认，请先检查额度，勿直接重复重置' })
+  }
+}

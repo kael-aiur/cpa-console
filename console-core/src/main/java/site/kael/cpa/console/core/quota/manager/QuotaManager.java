@@ -88,7 +88,7 @@ public class QuotaManager {
         };
     }
 
-    private String identifyProvider(Credential credential) {
+    public String identifyProvider(Credential credential) {
         if ("auth_file".equals(credential.type())) return normalizeProvider(credential.provider());
         String host = host(credential.baseUrl());
         if (host.contains("moonshot") || host.contains("kimi")) return "kimi";

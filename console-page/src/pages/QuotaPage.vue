@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import CredentialQuotaDisplay from '@/components/CredentialQuotaDisplay.vue'
 import { getQuotaFiles, getQuotaForFile } from '@/services/quotaApi'
 import type { AccountQuota, QuotaFile } from '@/types/quota'
 import { getProviderIcon, getProviderLabel, getRecentStatus, getRecentSuccessRate } from '@/utils/quotaDisplay'
@@ -97,25 +98,6 @@ function getBucketSuccessRate(bucket: { success: number; failed: number }): stri
 
 function isQuotaLoading(file: QuotaFile): boolean {
   return quotaLoading.value[file.id] === true
-}
-
-function formatResetTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-
-  // Some providers only return a clock time, while others include the exact
-  // reset date. Keep the compact display for the former and show both parts
-  // whenever the upstream value contains a calendar date.
-  const hasCalendarDate = /(?:^|\D)\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:\D|$)/.test(value)
-  return hasCalendarDate
-    ? date.toLocaleString([], {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatResetDateTime(value: string): string {
@@ -259,15 +241,7 @@ onMounted(() => {
               <span>剩余配额</span>
               <span class="quota-tier">{{ getQuota(file)?.tierName }}</span>
             </div>
-            <div v-for="window in getQuota(file)?.windows" :key="window.label" class="quota-window">
-              <div class="quota-window-head">
-                <span>{{ window.label }}</span>
-                <span class="quota-percent">{{ window.remainingPercent }}% <small>· {{ formatResetTime(window.resetAt) }} 重置</small></span>
-              </div>
-              <div class="quota-bar">
-                <span class="quota-bar-fill" :class="{ low: window.remainingPercent < 30, medium: window.remainingPercent >= 30 && window.remainingPercent < 60 }" :style="{ width: `${window.remainingPercent}%` }"></span>
-              </div>
-            </div>
+            <CredentialQuotaDisplay :quota="getQuota(file)" :show-summary="false" />
           </div>
 
           <div class="stat-row">

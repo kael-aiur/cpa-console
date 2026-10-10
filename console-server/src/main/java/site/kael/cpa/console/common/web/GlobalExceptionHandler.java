@@ -6,12 +6,20 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import site.kael.cpa.console.core.cpa.exception.CpaManagementException;
+import site.kael.cpa.console.admin.credential.dto.AdminCredentialResetResponse;
+import site.kael.cpa.console.admin.credential.exception.CredentialResetException;
 import site.kael.cpa.console.core.cpa.exception.CpaUnavailableException;
 import site.kael.cpa.console.core.cpa.exception.InvalidCpaApiKeyException;
 import site.kael.cpa.console.core.user.exception.UserNotFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(CredentialResetException.class)
+    public ResponseEntity<AdminCredentialResetResponse> credentialReset(
+            CredentialResetException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(exception.response());
+    }
+
     @ExceptionHandler(InvalidCpaApiKeyException.class)
     public ResponseEntity<ApiErrorResponse> invalidApiKey(InvalidCpaApiKeyException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiErrorResponse("INVALID_API_KEY", "API Key 无效"));

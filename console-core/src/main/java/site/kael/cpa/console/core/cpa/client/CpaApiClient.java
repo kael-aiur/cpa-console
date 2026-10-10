@@ -597,6 +597,48 @@ public class CpaApiClient {
         return value.asText("");
     }
 
+    public void resetCredentialQuota(String referenceId, Duration timeout) {
+        postCredentialReset("/quota/reset", referenceId, timeout);
+    }
+
+    public void resetCredentialCooldown(String referenceId, Duration timeout) {
+        postCredentialReset("/reset-quota", referenceId, timeout);
+    }
+
+    private void postCredentialReset(String path, String referenceId, Duration timeout) {
+        if (managementKey.isBlank()) throw new CpaManagementException("CPA management key is not configured");
+        if (referenceId == null || referenceId.isBlank()) throw new IllegalArgumentException("CPA auth_index is required");
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(managementApiKeysUri.toString().replace("/api-keys", path)))
+                    .timeout(timeout).header("X-Management-Key", managementKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("auth_index", referenceId))))
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                // CPA may return 500 after the provider reset succeeded but its internal routing reset failed.
+                // 501/502 are its explicit unsupported/provider-rejected contracts; other 5xx are uncertain.
+                if (response.statusCode() >= 500 && response.statusCode() != 501 && response.statusCode() != 502) {
+                    throw new CpaUnavailableException(new IOException("Unconfirmed CPA reset: HTTP " + response.statusCode()));
+                }
+                // Do not expose raw upstream payloads, which may contain sensitive account details.
+                throw new CpaManagementException("CPA reset request failed with HTTP " + response.statusCode());
+            }
+            JsonNode body = objectMapper.readTree(response.body());
+            if (body == null || !"ok".equals(body.path("status").asText())) {
+                throw new CpaUnavailableException(new IOException("Unconfirmed CPA reset response"));
+            }
+        } catch (CpaManagementException | CpaUnavailableException exception) {
+            throw exception;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new CpaUnavailableException(exception);
+        } catch (IOException exception) {
+            // A lost response does not prove the remote operation failed. Never retry automatically.
+            throw new CpaUnavailableException(exception);
+        }
+    }
+
     private JsonNode getManagementJson(String path, Duration timeout) {
         HttpRequest request = HttpRequest.newBuilder(URI.create(managementApiKeysUri.toString().replace("/api-keys", path)))
                 .timeout(timeout).header("X-Management-Key", managementKey).GET().build();

@@ -45,6 +45,14 @@ public class CpaApiKeyManager {
         return client.listQuotaProviders(timeout);
     }
 
+    public void resetCredentialQuota(String referenceId) {
+        client.resetCredentialQuota(referenceId, timeout);
+    }
+
+    public void resetCredentialCooldown(String referenceId) {
+        client.resetCredentialCooldown(referenceId, timeout);
+    }
+
     public Map<String, Object> getQuota(String referenceId) {
         return client.getQuota(referenceId, timeout);
     }

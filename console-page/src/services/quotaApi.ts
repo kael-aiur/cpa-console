@@ -46,7 +46,7 @@ function normalizeProvider(provider: QuotaFile): QuotaFile {
   }
 }
 
-function normalizeQuota(raw: Record<string, unknown>, provider: QuotaFile): AccountQuota {
+export function normalizeQuota(raw: Record<string, unknown>, provider: { provider: string }): AccountQuota {
   const windows = Array.isArray(raw.windows) ? raw.windows as QuotaWindow[] : []
   const rawResetCredits = raw.activeResetCredits
   const resetCredits = rawResetCredits && typeof rawResetCredits === 'object'
