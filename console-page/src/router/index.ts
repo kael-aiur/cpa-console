@@ -75,7 +75,7 @@ router.beforeEach(async (to) => {
   try {
     const response = await getUserInfo()
     if (to.meta.guestOnly) return { name: 'usage' }
-    if (requiresAuth && isAdminRoute && response.data.role !== 'admin') return { name: 'usage' }
+    if (requiresAuth && isAdminRoute && response.data.role !== 'admin') return { name: 'quota' }
     return true
   } catch {
     // 登录页本身允许匿名访问；未登录时必须放行当前路由，避免重定向到自身形成循环。

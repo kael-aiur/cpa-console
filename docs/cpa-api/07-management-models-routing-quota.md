@@ -52,7 +52,7 @@ Write body is the generic scalar form:
 
 Read field: `"switch-preview-model"`. Write uses same `{"value":...}` contract.
 
-## Reset Quota
+## Reset Routing Quota / Cooldown
 
 ```http
 POST /v0/management/reset-quota
@@ -63,7 +63,9 @@ Content-Type: application/json
 }
 ```
 
-This resets quota/cooldown observations on one credential.
+**This only clears CPA routing quota/cooldown observations on one credential; it does not restore the provider account’s real quota.**
+
+The corresponding v8 route is `POST /v8/management/routing/cooldown/reset`.
 
 Success response:
 
@@ -76,6 +78,28 @@ Success response:
 ```
 
 Failures include invalid body/auth-index missing (`400`) and auth not found (`404`).
+
+## Reset Provider Account Quota
+
+```http
+POST /v0/management/quota/reset
+Content-Type: application/json
+
+{"auth_index": "<value-from-auth-files>"}
+```
+
+Optional body fields: `provider`, `plugin_id`. By default CPA resolves the provider from the credential.
+This invokes a registered plugin/provider quota-reset implementation. A credential being an auth file does not
+by itself imply reset support. Missing support/plugin host yields `501`; provider rejection/failure yields `502`;
+unknown credential yields `404`. A successful response has `status: "ok"` and `auth_index`, with an optional message.
+
+In the reviewed implementation, provider success is followed by CPA's core routing reset. If that internal
+reset fails, CPA returns `500` even though the provider reset may already have completed. Treat such responses
+as uncertain rather than blindly retrying a potentially quota-credit-consuming operation.
+
+The console's admin reset is restricted to Codex OAuth auth files (`openai` is normalized to `codex`).
+It explicitly calls this endpoint first and `/reset-quota` second, stopping if the first step fails.
+Both calls must succeed for a complete success. No automatic reset retry is performed.
 
 ## API Key Usage Aggregation
 

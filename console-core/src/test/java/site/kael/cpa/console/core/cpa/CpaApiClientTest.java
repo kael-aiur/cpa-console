@@ -18,6 +18,66 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CpaApiClientTest {
     @Test
+    void postsBothResetEndpointsWithAuthIndexAndManagementAuthentication() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        var paths = new java.util.ArrayList<String>();
+        var bodies = new java.util.ArrayList<String>();
+        var methods = new java.util.ArrayList<String>();
+        var keys = new java.util.ArrayList<String>();
+        server.createContext("/", exchange -> {
+            paths.add(exchange.getRequestURI().getPath());
+            bodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            methods.add(exchange.getRequestMethod());
+            keys.add(exchange.getRequestHeaders().getFirst("X-Management-Key"));
+            byte[] response = "{\"status\":\"ok\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var timeout = Duration.ofSeconds(2);
+            var client = new CpaApiClient("http://127.0.0.1:" + server.getAddress().getPort(), timeout, "test-management-key");
+            client.resetCredentialQuota("index\"with-quote", timeout);
+            client.resetCredentialCooldown("index\"with-quote", timeout);
+            assertEquals(List.of("/v0/management/quota/reset", "/v0/management/reset-quota"), paths);
+            assertEquals(List.of("POST", "POST"), methods);
+            assertEquals(List.of("test-management-key", "test-management-key"), keys);
+            for (String body : bodies) assertEquals("index\"with-quote", new ObjectMapper().readTree(body).path("auth_index").asText());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void rejectsHttpAndSemanticResetFailuresWithoutRetrying() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        server.createContext("/v0/management/quota/reset", exchange -> {
+            int call = calls.incrementAndGet();
+            byte[] response = (call == 1 ? "{\"error\":\"private detail\"}" : "{\"status\":\"error\"}").getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(call == 1 ? 501 : call == 2 ? 500 : 200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var timeout = Duration.ofSeconds(2);
+            var client = new CpaApiClient("http://127.0.0.1:" + server.getAddress().getPort(), timeout, "test-key");
+            var error = org.junit.jupiter.api.Assertions.assertThrows(site.kael.cpa.console.core.cpa.exception.CpaManagementException.class,
+                    () -> client.resetCredentialQuota("index", timeout));
+            org.junit.jupiter.api.Assertions.assertFalse(error.getMessage().contains("private detail"));
+            org.junit.jupiter.api.Assertions.assertThrows(site.kael.cpa.console.core.cpa.exception.CpaUnavailableException.class,
+                    () -> client.resetCredentialQuota("index", timeout));
+            org.junit.jupiter.api.Assertions.assertThrows(site.kael.cpa.console.core.cpa.exception.CpaUnavailableException.class,
+                    () -> client.resetCredentialQuota("index", timeout));
+            assertEquals(3, calls.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void identifiesInteractionsCredentialFromEndpointWhenBaseUrlIsMissing() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", exchange -> {

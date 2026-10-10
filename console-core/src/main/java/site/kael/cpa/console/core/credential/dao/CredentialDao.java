@@ -27,6 +27,14 @@ public class CredentialDao {
         ensureColumns();
     }
 
+    public java.util.Optional<Credential> findById(long id) {
+        return jdbcTemplate.query("""
+                SELECT id, reference_id, name, credential_type, enabled, provider, base_url, project_id,
+                       success, failed, recent_requests, tags, created_at, updated_at
+                FROM credentials WHERE id = ?
+                """, this::mapCredential, id).stream().findFirst();
+    }
+
     public java.util.Optional<Credential> findByReferenceId(String referenceId) {
         List<Credential> credentials = jdbcTemplate.query("""
                 SELECT id, reference_id, name, credential_type, enabled, provider, base_url, project_id,
