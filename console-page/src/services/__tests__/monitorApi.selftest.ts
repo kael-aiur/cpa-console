@@ -10,9 +10,9 @@
  *      include this file plus monitorApi.ts, monitorDisplay.ts, useMonitorQueryState.ts,
  *      monitor.ts, app.ts
  *   2. ./node_modules/.bin/tsc -p .tsconfig.selftest.json
- *   3. rewrite "@/..." specifiers in .selftest-out/**/*.js to relative paths with .js
- *      suffixes ("@/services/monitorApi" -> "../services/monitorApi.js" from
- *      src/composables/, "./services/monitorApi.js" from src/services/__tests__/)
+ *   3. rewrite "@/..." specifiers in .selftest-out JS output to relative paths with
+ *      .js suffixes (for example "@/services/monitorApi" becomes "../services/monitorApi.js"
+ *      from src/composables/ and "./services/monitorApi.js" from src/services/__tests__/)
  *   4. node .selftest-out/src/services/__tests__/monitorApi.selftest.js
  */
 import { strict as assert } from 'node:assert'
