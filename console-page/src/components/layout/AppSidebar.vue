@@ -11,6 +11,7 @@ const menus = [
   { path: '/usage', label: '用量查看', description: '请求与消耗统计' },
   { path: '/quota', label: '额度查看', description: '账户余额与配额' },
   { path: '/models', label: '可用模型', description: '模型与凭证支持' },
+  { path: '/monitor-records', label: '监控记录', description: '任务卡片与历史' },
 ]
 
 const emit = defineEmits<{
