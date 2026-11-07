@@ -8,6 +8,8 @@ import AdminUsagePage from '@/pages/AdminUsagePage.vue'
 import AdminModelExperiencePage from '@/pages/AdminModelExperiencePage.vue'
 import AdminAvailableModelsPage from '@/pages/AdminAvailableModelsPage.vue'
 import AdminModelMetadataPage from '@/pages/AdminModelMetadataPage.vue'
+import AdminMonitorPage from '@/pages/AdminMonitorPage.vue'
+import MonitorRecordsPage from '@/pages/MonitorRecordsPage.vue'
 import QuotaPage from '@/pages/QuotaPage.vue'
 import UsagePage from '@/pages/UsagePage.vue'
 import ModelsPage from '@/pages/ModelsPage.vue'
@@ -26,6 +28,7 @@ export const router = createRouter({
         { path: 'quota', name: 'quota', component: QuotaPage, meta: { title: '额度查看' } },
         { path: 'models', name: 'models', component: ModelsPage, meta: { title: '可用模型' } },
         { path: 'usage', name: 'usage', component: UsagePage, meta: { title: '用量查看' } },
+        { path: 'monitor-records', name: 'monitor-records', component: MonitorRecordsPage, meta: { title: '监控记录' } },
       ],
     },
     // 管理员后台默认进入用量统计。
@@ -65,6 +68,12 @@ export const router = createRouter({
       component: AdminLayout,
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [{ path: '', name: 'admin-model-experience', component: AdminModelExperiencePage, meta: { title: '模型体验' } }],
+    },
+    {
+      path: '/admin-monitor',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [{ path: '', name: 'admin-monitor', component: AdminMonitorPage, meta: { title: '定时监控' } }],
     },
   ],
 })

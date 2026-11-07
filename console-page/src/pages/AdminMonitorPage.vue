@@ -687,6 +687,13 @@ void ADMIN_EDITABLE_FIELDS
   font-size: 12px;
 }
 
+.monitor-task-table th:nth-child(1),
+.monitor-task-table th:nth-child(2),
+.monitor-task-table th:nth-child(3),
+.monitor-task-table th:nth-child(4) {
+  width: auto;
+}
+
 .monitor-task-table code.monitor-cron {
   display: inline-block;
   max-width: 100%;
