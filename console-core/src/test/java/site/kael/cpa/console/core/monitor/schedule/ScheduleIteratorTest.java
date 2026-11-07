@@ -50,19 +50,16 @@ class ScheduleIteratorTest {
 
     @Test
     void rejectsMinimumIntervalViolationViaValidator() {
-        // Seconds 0 and 59 give a 1 s adjacent gap; only the certificate validator rejects the plan.
         assertThrows(IllegalArgumentException.class,
                 () -> new CronPolicyValidator(java.time.Clock.systemUTC()).certify("0,59 * * * * *", "UTC"));
     }
 
     @Test
     void gapLocalTimeProducesZeroMatches() {
-        // America/New_York 2026 spring forward: 02:00 -> 03:00 local missing.
         ScheduleIterator hourly = ScheduleIterator.of("0 0 2 * * *", "America/New_York");
-        Instant before = Instant.parse("2026-03-08T05:00:00Z"); // 00:00 EST
+        Instant before = Instant.parse("2026-03-08T05:00:00Z");
         Instant next = hourly.next(before);
         assertNotNull(next);
-        // Next 02:00 must be March 9, not March 8 (gap skipped).
         LocalDateTime local = LocalDateTime.ofInstant(next, ZoneId.of("America/New_York"));
         assertEquals(2, local.getHour());
         assertEquals(9, local.getDayOfMonth());
@@ -71,7 +68,6 @@ class ScheduleIteratorTest {
 
     @Test
     void overlapLocalTimeProducesTwoSortedMatches() {
-        // America/New_York 2026 fall back: 01:30 occurs twice (EDT and EST).
         ScheduleIterator halfPastOne = ScheduleIterator.of("0 30 1 * * *", "America/New_York");
         Instant before = Instant.parse("2026-10-31T12:00:00Z");
         List<Instant> triggers = halfPastOne.next(before, 4);
@@ -79,17 +75,50 @@ class ScheduleIteratorTest {
         for (int i = 1; i < triggers.size(); i++) {
             assertTrue(triggers.get(i).isAfter(triggers.get(i - 1)), "must be sorted");
         }
-        // The first pair should be the two occurrences of 01:30 on November 1.
         LocalDateTime edt = LocalDateTime.ofInstant(triggers.get(0), ZoneOffset.ofHours(-4));
         LocalDateTime est = LocalDateTime.ofInstant(triggers.get(1), ZoneOffset.ofHours(-5));
         assertEquals(LocalDateTime.of(2026, 11, 1, 1, 30), edt);
         assertEquals(LocalDateTime.of(2026, 11, 1, 1, 30), est);
     }
 
+    /**
+     * B-CRON-3 regression: hourly triggers through the fall-back must keep absolute order.
+     * The first EDT 01:xx hour (05:00Z-05:59Z) must not be truncated by the second 01:00 hour.
+     */
+    @Test
+    void fallBackHourlySequenceKeepsFullFirstHour() {
+        ScheduleIterator iterator = ScheduleIterator.of("0 * * * * *", "America/New_York");
+        // Fresh iterator over the full overlap window: first EDT hour then the EST hour.
+        List<Instant> sequence =
+                iterator.next(Instant.parse("2026-11-01T04:59:59Z"), 121);
+        assertEquals(121, sequence.size());
+        for (int i = 1; i < sequence.size(); i++) {
+            assertTrue(sequence.get(i).isAfter(sequence.get(i - 1)), "global order");
+        }
+        // First four are the earliest EDT block members.
+        assertEquals(List.of(
+                Instant.parse("2026-11-01T05:00:00Z"),
+                Instant.parse("2026-11-01T05:01:00Z"),
+                Instant.parse("2026-11-01T05:02:00Z"),
+                Instant.parse("2026-11-01T05:03:00Z")), sequence.subList(0, 4));
+        // 60 EDT members (05:00-05:59Z), then the 61 EST members (06:00-07:00Z).
+        assertEquals(Instant.parse("2026-11-01T05:59:00Z"), sequence.get(59));
+        assertEquals(Instant.parse("2026-11-01T06:00:00Z"), sequence.get(60));
+        assertEquals(Instant.parse("2026-11-01T07:00:00Z"), sequence.get(120));
+    }
+
+    /** Matches through the fall-back overlap must resolve per-offset, not collapse to one. */
+    @Test
+    void matchesDistinguishesBothOverlapInstants() {
+        ScheduleIterator iterator = ScheduleIterator.of("0 * * * * *", "America/New_York");
+        Instant edtCopy = Instant.parse("2026-11-01T05:30:00Z");
+        Instant estCopy = Instant.parse("2026-11-01T06:30:00Z");
+        assertTrue(iterator.matches(edtCopy));
+        assertTrue(iterator.matches(estCopy));
+    }
+
     @Test
     void fiftyNineAndSixtySecondsRejected() {
-        // 0 and 59 in the minute field gives a 60 s gap, which is allowed; the second field pair
-        // 0,59 would give a 1 s gap but the *minute* field is what matters here.
         ScheduleIterator ok = ScheduleIterator.of("0 0 * * * *", "UTC");
         assertNotNull(ok.next(UTC_CLOCK.instant()));
         assertThrows(IllegalArgumentException.class,
@@ -124,7 +153,6 @@ class ScheduleIteratorTest {
 
     @Test
     void secondOfFebruaryThirtiethHasNoNext() {
-        // Feb 30 never exists: the cron "0 0 0 30 2 *" never fires.
         ScheduleIterator impossible = ScheduleIterator.of("0 0 0 30 2 *", "UTC");
         assertNull(impossible.next(UTC_CLOCK.instant()));
     }
