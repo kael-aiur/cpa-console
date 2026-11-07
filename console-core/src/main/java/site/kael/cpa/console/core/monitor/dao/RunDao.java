@@ -198,6 +198,22 @@ public final class RunDao {
         }
     }
 
+    /**
+     * Reverts a send fence after a proven pre-submission failure (D5.3 step 6): clears
+     * started_at and restores NOT_SENT while still CLAIMED/PENDING. The task slot stays
+     * held so the slot owner keeps its own execution budget during the same attempt.
+     */
+    public boolean revertSendFence(String runId) throws SQLException {
+        String sql = "UPDATE monitor_runs SET dispatch_status = 'NOT_SENT', started_at = NULL "
+                + "WHERE run_id = ? AND phase = 'CLAIMED' AND state = 'PENDING' "
+                + "AND dispatch_status = 'MAY_HAVE_SENT' AND started_at IS NOT NULL";
+        try (Connection connection = DataSourceUtils.getConnection(dataSource);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, runId);
+            return statement.executeUpdate() == 1;
+        }
+    }
+
     /** Loads a run by its public id. */
     public Optional<RunRow> findByRunId(String runId) throws SQLException {
         String sql = "SELECT run_seq, run_id, task_id, scheduled_at, schedule_revision, task_safe_name, "
