@@ -1,9 +1,19 @@
 /**
- * T12 offline self-test (compiles under the app tsconfig; excluded from vue-tsc via the
- * existing __tests__ exclude). Run with:
- *   npx tsc --module esnext --moduleResolution bundler --target es2020 \
- *     --strict --skipLibCheck src/services/__tests__/monitorApi.selftest.ts && node monitorApi.selftest.js
- * No test framework is introduced; every assertion below must hold or the process exits 1.
+ * T12 offline self-test (mock fetch only; no real backend). The app tsconfig excludes
+ * __tests__ from vue-tsc, so it compiles and runs standalone with the committed project
+ * TypeScript, without adding a test framework. Every assertion below must hold or the
+ * process exits non-zero.
+ *
+ * Recorded run procedure (console-page/):
+ *   1. write .tsconfig.selftest.json with module ES2020, moduleResolution Bundler,
+ *      strict, types node, outDir .selftest-out, rootDir ".", paths @/* -> src/* and
+ *      include this file plus monitorApi.ts, monitorDisplay.ts, useMonitorQueryState.ts,
+ *      monitor.ts, app.ts
+ *   2. ./node_modules/.bin/tsc -p .tsconfig.selftest.json
+ *   3. rewrite "@/..." specifiers in .selftest-out/**/*.js to relative paths with .js
+ *      suffixes ("@/services/monitorApi" -> "../services/monitorApi.js" from
+ *      src/composables/, "./services/monitorApi.js" from src/services/__tests__/)
+ *   4. node .selftest-out/src/services/__tests__/monitorApi.selftest.js
  */
 import { strict as assert } from 'node:assert'
 import {
@@ -31,7 +41,6 @@ interface RecordedRequest {
 
 const calls: RecordedRequest[] = []
 let responses: Array<{ status: number; body: unknown }> = []
-let csrfRequests = 0
 
 const realFetch = globalThis.fetch
 
@@ -47,7 +56,6 @@ const patchedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promi
     body: typeof init?.body === 'string' ? init.body : null,
   })
   if (path === '/api/csrf') {
-    csrfRequests += 1
     return jsonResponse(200, { token: 'csrf-token-1' })
   }
   const next = responses.shift()
@@ -225,7 +233,6 @@ async function main() {
   assert.equal(secondPage, null, 'snapshot change must not return a merged page')
   assert.equal(state.cursor.value, null, 'old cursor must be dropped')
   assert.equal(state.snapshotChanged.value, true, 'old page must be discarded, not mixed')
-  assert.ok(state.snapshotChanged.value)
   assert.deepEqual(state.window.value, keptWindow, 'user window must survive the snapshot reset')
   assert.ok(state.error.value?.includes('监控数据已更新'))
 
