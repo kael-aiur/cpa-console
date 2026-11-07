@@ -81,9 +81,11 @@ export function useMonitorQueryState() {
     return true
   }
 
-  function setDefaultWindow(nowMs: number) {
+  function setDefaultWindow(nowMs: number): boolean {
+    if (!Number.isFinite(nowMs)) return false
     preserveWindow({ startIso: toMonitorIsoInstant(nowMs - 24 * 60 * 60 * 1000), endIso: toMonitorIsoInstant(nowMs) })
     resetPaging()
+    return true
   }
 
   function setView(nextView: MonitorView) {
