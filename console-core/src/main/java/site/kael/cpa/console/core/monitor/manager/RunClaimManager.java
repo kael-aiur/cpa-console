@@ -22,6 +22,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.sql.DataSource;
@@ -265,6 +266,68 @@ public final class RunClaimManager {
     /** Releases a task slot for a claim that never reached the fence. */
     public boolean releaseTaskSlot(String runId) throws SQLException {
         return runDao.releaseTaskSlot(runId);
+    }
+
+    /** Loads a run row by public id (T06 pre-checks and terminal evidence). */
+    public Optional<RunDao.RunRow> runRow(String runId) throws SQLException {
+        return runDao.findByRunId(runId);
+    }
+
+    /** Current task row as seen inside the send fence (T06 final re-check). */
+    public MonitorTask runTask(String taskId) throws SQLException {
+        return taskManager.requireForClaim(taskId);
+    }
+
+    /** True when a different active run still owns this task (T06 slot pre-check). */
+    public boolean hasActiveRun(String taskId, String runId) throws SQLException {
+        Optional<RunDao.RunRow> active = runDao.findActiveByTask(taskId);
+        return active.isPresent() && !active.get().runId().equals(runId);
+    }
+
+    /** Guard row lookup for the non-authoritative cooldown pre-check (T06). */
+    public Optional<CredentialGuardDao.GuardRow> guard(String credentialKey) throws SQLException {
+        return guardDao.find(credentialKey);
+    }
+
+    /** In-memory-only decryption of the bound auth id for outbound calls (T06). */
+    public String decryptAuthId(String authIdCipher) {
+        return crypto.decrypt(authIdCipher);
+    }
+
+    /** In-memory-only decryption of the bound auth index for outbound calls (T06). */
+    public String decryptAuthIndex(String authIndexCipher) {
+        return crypto.decrypt(authIndexCipher);
+    }
+
+    /** In-memory-only decryption of the bound route model for outbound calls (T06). */
+    public String decryptRouteModel(String taskId) throws SQLException {
+        MonitorTask task = taskManager.requireForClaim(taskId);
+        return crypto.decrypt(task.routeModelCipher());
+    }
+
+    /**
+     * Reverts the send fence after a proven pre-submission transport failure (D5.3 step 6):
+     * clears started_at and restores NOT_SENT so the run can terminalize as a not-sent
+     * UNKNOWN without entering the verification sample. Refuses when the run already left
+     * the CLAIMED/PENDING fence state.
+     */
+    public boolean revertSendFence(String runId) {
+        Objects.requireNonNull(runId, "runId");
+        Boolean reverted = transactions.execute(status -> {
+            try {
+                boolean applied = runDao.revertSendFence(runId);
+                if (!applied) {
+                    status.setRollbackOnly();
+                    return false;
+                }
+                runDao.bumpDataRevision(writeConnection());
+                return true;
+            } catch (SQLException exception) {
+                status.setRollbackOnly();
+                throw new IllegalStateException("Fence revert failed", exception);
+            }
+        });
+        return Boolean.TRUE.equals(reverted);
     }
 
     /**

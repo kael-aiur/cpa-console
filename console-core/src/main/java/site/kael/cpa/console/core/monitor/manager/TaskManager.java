@@ -150,6 +150,8 @@ public final class TaskManager {
     private final CronPolicyValidator cronValidator;
     private final BoundTargetValidator identityResolver;
     private final MonitorConfigLockManager configLock;
+    private final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.locks.ReentrantLock> taskLocks =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     public TaskManager(
             DataSource dataSource,
@@ -240,6 +242,16 @@ public final class TaskManager {
     /** Read-only task lookup for API surfaces. */
     public Optional<MonitorTask> find(String taskId) throws SQLException {
         return readTask(taskId);
+    }
+
+    /**
+     * Per-task edit lock shared by PATCH and the T06 final fence. The lock object is
+     * intentionally process-local; SQLite remains the persistence authority and the unique
+     * slot/guard constraints remain the durable race guards.
+     */
+    public java.util.concurrent.locks.ReentrantLock taskLock(String taskId) {
+        Objects.requireNonNull(taskId, "taskId");
+        return taskLocks.computeIfAbsent(taskId, id -> new java.util.concurrent.locks.ReentrantLock());
     }
 
     /** All tasks ordered by creation; safe display fields only. */

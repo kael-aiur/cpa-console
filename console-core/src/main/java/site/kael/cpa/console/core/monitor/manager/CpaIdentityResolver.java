@@ -23,7 +23,7 @@ import java.util.Set;
  * that are not exact registered members. Short-lived opaque candidate ids are stable within
  * one resolution result only and never encode real identities.
  */
-public final class CpaIdentityResolver {
+public class CpaIdentityResolver {
 
     /** Whether a candidate can be used as a fixed verification target. */
     public enum Support {
