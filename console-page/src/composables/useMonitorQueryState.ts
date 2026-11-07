@@ -6,7 +6,8 @@ import type {
   MonitorRunPageResponse,
   MonitorView,
 } from '@/types/monitor'
-import { isSnapshotChangedError, normalizeMonitorError, toMonitorIsoInstant } from '@/services/monitorApi'
+import { isSnapshotChangedError, normalizeMonitorError } from '@/services/monitorApi'
+import { toMonitorIsoInstant } from '@/utils/monitorDisplay'
 
 /**
  * Shared monitoring query state (T12 / D6.3). One captured window/as_of/view/cursor
@@ -35,6 +36,12 @@ export interface MonitorRunPage<T> {
   runs: T[]
   nextCursor: string | null
   snapshot: MonitorQuerySnapshot
+}
+
+export interface MonitorPageMeta {
+  data_revision: number
+  as_of: number
+  next_cursor: string | null
 }
 
 function clampLimit(limit?: number): number | undefined {
@@ -100,7 +107,7 @@ export function useMonitorQueryState() {
     error.value = '监控数据已更新，请刷新'
   }
 
-  function trackPage(taskId: string, page: { data_revision: number; as_of: number; next_cursor: string | null }) {
+  function trackPage(taskId: string, page: MonitorPageMeta) {
     dataRevision.value = page.data_revision
     asOfMs.value = page.as_of
     cursor.value = page.next_cursor
@@ -160,7 +167,10 @@ export function useMonitorQueryState() {
   /** Load one more page using the retained signed cursor; 409 clears it via markSnapshotChanged. */
   async function loadNextPage<T>(
     taskId: string,
-    fetchPage: (taskId: string, query: MonitorHistoryQuery) => Promise<{ runs: T[]; next_cursor: string | null }>,
+    fetchPage: (
+      taskId: string,
+      query: MonitorHistoryQuery,
+    ) => Promise<MonitorPageMeta & { runs: T[]; next_cursor: string | null }>,
   ): Promise<MonitorRunPage<T> | null> {
     if (!cursor.value || loading.value) return null
     loading.value = true
@@ -182,7 +192,7 @@ export function useMonitorQueryState() {
 
   /** Builds card-window parameters that stay consistent with the captured history window. */
   function buildCardsQuery(): MonitorCardsQuery {
-    return window.value ? { ...window.value } : {}
+    return window.value ? { start: window.value.startIso, end: window.value.endIso } : {}
   }
 
   return {
