@@ -18,14 +18,14 @@ import {
   formatAdminRunSummaryLine,
   adminRevisionState,
   ADMIN_EDITABLE_FIELDS,
-} from '@/pages/__tests__/adminMonitorPageLogic'
+} from '@/utils/adminMonitorPageLogic'
 import {
   MONITOR_STATE_COPY,
   resolveMonitorCardSummary,
   MONITOR_EMPTY_COPY,
   resolveMonitorEmptyCopy,
   monitorHistoryView,
-} from '@/pages/__tests__/monitorRecordsPageLogic'
+} from '@/utils/monitorRecordsPageLogic'
 import { formatMonitorRatio, formatMonitorUtcTime, monitorWindowSummary, formatMonitorAge } from '@/utils/monitorDisplay'
 
 const NOW = 1762500000000
