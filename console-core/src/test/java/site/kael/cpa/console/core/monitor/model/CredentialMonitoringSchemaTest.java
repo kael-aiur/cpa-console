@@ -127,7 +127,7 @@ class CredentialMonitoringSchemaTest {
         runner.migrate();
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         runner.migrate();
-        assertEquals(4, jdbc.queryForObject("SELECT COUNT(*) FROM schema_migrations", Integer.class));
+        assertEquals(5, jdbc.queryForObject("SELECT COUNT(*) FROM schema_migrations", Integer.class));
         assertEquals(1, jdbc.queryForObject(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='monitor_tasks'", Integer.class));
     }
