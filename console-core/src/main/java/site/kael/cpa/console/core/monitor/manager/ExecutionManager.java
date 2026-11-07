@@ -4,26 +4,20 @@ import site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient;
 import site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient.VerifyRequest;
 import site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient.VerificationHttpResponse;
 import site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient.VerificationTransportException;
-import site.kael.cpa.console.core.crypto.ApiKeyCrypto;
 import site.kael.cpa.console.core.monitor.dao.CredentialGuardDao;
 import site.kael.cpa.console.core.monitor.dao.RunDao;
 import site.kael.cpa.console.core.monitor.dao.RunDao.RunRow;
 import site.kael.cpa.console.core.monitor.model.DispatchStatus;
 import site.kael.cpa.console.core.monitor.model.MonitorTask;
 import site.kael.cpa.console.core.monitor.model.RunTerminalType;
-import site.kael.cpa.console.core.monitor.schedule.ScheduleIterator;
 
 import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -187,7 +181,7 @@ public final class ExecutionManager {
             return;
         } catch (java.util.concurrent.ExecutionException exception) {
             Throwable cause = exception.getCause();
-            if (cause instanceof DispatchAborted aborted) {
+            if (cause instanceof DispatchAborted) {
                 return; // The loser already recorded its own terminal state.
             }
             if (cause instanceof java.sql.SQLException || cause.getCause() instanceof java.sql.SQLException) {
@@ -203,10 +197,8 @@ public final class ExecutionManager {
             claimManager.skipClaim(runId, REASON_STORAGE_UNHEALTHY);
             return;
         }
-        if (!submitted) {
-            // dispatchWithSlot communicates via exceptions/terminal writes; a null return
-            // means the worker terminalized the run itself.
-        }
+        // The worker terminalizes its own run (verdict, skip, or storage signal); nothing
+        // further happens on this thread and no result value is produced.
     }
 
     /** Worker-side path with an acquired execution slot. */

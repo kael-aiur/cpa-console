@@ -68,7 +68,10 @@ public final class RetentionDao {
         }
     }
 
-    /** Transactional metadata read helper (ensure-on-demand inside a caller transaction). */
+    /**
+     * Transactional metadata read helper: the ensure-INSERT and the SELECT run on the
+     * caller's transaction-bound connection so a rollback removes both together.
+     */
     public RetentionMeta ensureAndReadMetaTransactional(Connection connection, long nowMs) throws SQLException {
         String insertSql = "INSERT INTO monitor_retention_meta "
                 + "(id, collection_started_at, retention_revision, last_cleanup_at) "
