@@ -205,7 +205,7 @@ class IntervalProofR3Test {
             long oracleFrom = b.toEpochMilli() - ZoneWindows.DAY_MS;
             long oracleUntil = b.toEpochMilli() + 4 * ZoneWindows.DAY_MS;
             List<Long> expected = oracleWindowSeconds(zone, oracleFrom, oracleUntil,
-                    local -> local.getHour() == 3 && local.getMinute() == 30 && local.getSecond() == 0);
+                    fixedTime(3, 30, 0));
             List<Long> product = productProjection(rules, cov, plan);
             // The FIRST product trigger must be exactly the first oracle trigger > b.
             assertFalse(product.isEmpty(), () -> "hourly projection must not be empty for base " + b);
@@ -386,6 +386,19 @@ class IntervalProofR3Test {
                 .count();
         assertTrue(seenAtBoundary <= 1,
                 "the gap transition instant must not be double-counted at the seam");
+        // everyMinuteAt(0).and(minute==0) is the LIVE oracle predicate for the hourly plan
+        // on a bounded absolute window: compare the bounded product with the UTC oracle.
+        List<Long> hourlyExpected = oracleWindowSeconds(fixtureId,
+                Instant.parse("2019-06-01T00:00:00Z").toEpochMilli(),
+                Instant.parse("2019-07-15T00:00:00Z").toEpochMilli(),
+                everyMinuteAt(0).and(local -> local.getMinute() == 0));
+        List<Long> hourlyProduct = productProjection(controlled, cov, "0 0 * * * *").stream()
+                .filter(ms -> ms >= Instant.parse("2019-06-01T00:00:00Z").toEpochMilli()
+                        && ms < Instant.parse("2019-07-15T00:00:00Z").toEpochMilli())
+                .limit(hourlyExpected.size())
+                .toList();
+        assertEquals(hourlyExpected, hourlyProduct,
+                "hourly projection must equal the everyMinuteAt(0) UTC-second oracle");
     }
 
     /** V13 companion: half-open boundary clipping at a real transition instant. */
