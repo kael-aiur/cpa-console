@@ -53,7 +53,7 @@ class CronPolicyValidatorTest {
         assertTrue(validator.isCertificateValid(certificate, "0 0 12 * * *", "UTC"));
         CronCertificate other = new CronCertificate(
                 "0 0 12 * * *", "UTC", "different-tzdb", CronCertificate.CURRENT_ALGORITHM_VERSION,
-                86_400_000L, Instant.parse("2026-01-01T00:00:00Z"));
+                86_400_000L, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
         assertFalse(validator.isCertificateValid(other, "0 0 12 * * *", "UTC"));
     }
 

@@ -409,9 +409,13 @@ public final class MonitorLifecycleManager {
             return null;
         }
         try {
+            // Legacy stored certificates (v3 and earlier) have no base-point field; they
+            // are whole-future domain certificates, so parse them with the epoch-minimum
+            // base point. Algorithm version 4 re-issues with the real certification instant.
             return new site.kael.cpa.console.core.monitor.model.CronCertificate(
                     task.cronExpression(), task.zoneId(), parts[0], Integer.parseInt(parts[1]),
-                    Long.parseLong(parts[2]), Instant.ofEpochMilli(Long.parseLong(parts[3])));
+                    Long.parseLong(parts[2]), Instant.ofEpochMilli(Long.MIN_VALUE),
+                    Instant.ofEpochMilli(Long.parseLong(parts[3])));
         } catch (RuntimeException exception) {
             return null;
         }

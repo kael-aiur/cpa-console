@@ -22,29 +22,38 @@ class CronCertificateR3Test {
 
     @Test
     void v08_v2InvalidationAndProofIdentity() {
-        assertEquals(3, CronCertificate.CURRENT_ALGORITHM_VERSION,
-                "R3-A proof rework must bump the algorithm identity");
+        assertEquals(4, CronCertificate.CURRENT_ALGORITHM_VERSION,
+                "R2-A-R proof rework must bump the algorithm identity");
         CronPolicyValidator validator = new CronPolicyValidator(Clock.fixed(
                 Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
         CronCertificate fresh = validator.certify("0 0 12 * * *", "UTC");
-        assertEquals(3, fresh.algorithmVersion());
+        assertEquals(4, fresh.algorithmVersion());
+        // The proof base point b is the injected Clock instant and is carried in the cert.
+        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), fresh.basePoint());
         assertTrue(validator.isCertificateValid(fresh, "0 0 12 * * *", "UTC"));
-        // A version-2 certificate (whole 1970-2370 cycle shift) must be invalid.
+        // Version-2 (whole 1970-2370 cycle shift) and version-1 (sampled) certificates
+        // must be invalid under the v4 proof identity.
         CronCertificate v2 = new CronCertificate("0 0 12 * * *", "UTC",
-                fresh.tzdbVersion(), 2, fresh.minimumIntervalMs(), Instant.parse("2025-01-01T00:00:00Z"));
+                fresh.tzdbVersion(), 2, fresh.minimumIntervalMs(), fresh.basePoint(),
+                Instant.parse("2025-01-01T00:00:00Z"));
         assertFalse(validator.isCertificateValid(v2, "0 0 12 * * *", "UTC"));
-        // A version-1 sampled certificate must be invalid too.
         CronCertificate v1 = new CronCertificate("0 0 12 * * *", "UTC",
-                fresh.tzdbVersion(), 1, fresh.minimumIntervalMs(), Instant.parse("2024-01-01T00:00:00Z"));
+                fresh.tzdbVersion(), 1, fresh.minimumIntervalMs(), fresh.basePoint(),
+                Instant.parse("2024-01-01T00:00:00Z"));
         assertFalse(validator.isCertificateValid(v1, "0 0 12 * * *", "UTC"));
         // A tzdb change invalidates the certificate even under the same algorithm version.
         CronCertificate otherTzdb = new CronCertificate("0 0 12 * * *", "UTC",
                 "different-tzdb", CronCertificate.CURRENT_ALGORITHM_VERSION,
-                fresh.minimumIntervalMs(), Instant.parse("2026-01-01T00:00:00Z"));
+                fresh.minimumIntervalMs(), fresh.basePoint(), Instant.parse("2026-01-01T00:00:00Z"));
         assertFalse(validator.isCertificateValid(otherTzdb, "0 0 12 * * *", "UTC"));
         // A plan change invalidates the certificate.
         assertFalse(validator.isCertificateValid(fresh, "0 0 13 * * *", "UTC"));
         // A zone change invalidates the certificate.
         assertFalse(validator.isCertificateValid(fresh, "0 0 12 * * *", "Asia/Kathmandu"));
+        // Use outside the proven domain (before b) invalidates the certificate.
+        CronPolicyValidator earlierValidator = new CronPolicyValidator(Clock.fixed(
+                Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC));
+        assertFalse(earlierValidator.isCertificateValid(fresh, "0 0 12 * * *", "UTC"),
+                "a certificate is not usable before its proven base-point domain");
     }
 }

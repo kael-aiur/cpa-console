@@ -14,10 +14,13 @@ class IntervalValidatorTest {
 
     private static final long MIN_MS = CronPolicy.MINIMUM_INTERVAL_MS;
 
+    /** Whole-future proof domain for the retained interval matrix (b = provider epoch floor). */
+    private static final java.time.Instant EPOCH_BASE = java.time.Instant.ofEpochMilli(Long.MIN_VALUE);
+
     @Test
     void passesEveryTwoHourSeventeen() {
         IntervalValidator.Validation validation =
-                IntervalValidator.validate("17 */2 * * * *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("17 */2 * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         IntervalValidator.Validation.Passed passed = assertInstanceOf(IntervalValidator.Validation.Passed.class, validation);
         assertEquals(120_000L, passed.minimumIntervalMs());
     }
@@ -25,14 +28,14 @@ class IntervalValidatorTest {
     @Test
     void rejectsMinutePairZeroAndFiftyNine() {
         IntervalValidator.Validation validation =
-                IntervalValidator.validate("0,59 * * * * *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0,59 * * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Rejected.class, validation);
     }
 
     @Test
     void rejectsImpossibleDate() {
         IntervalValidator.Validation validation =
-                IntervalValidator.validate("0 0 0 30 2 *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0 0 0 30 2 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Rejected.class, validation);
     }
 
@@ -40,7 +43,7 @@ class IntervalValidatorTest {
     @Test
     void rejectsWeekdayMinuteBoundaryGapBelowSixtySeconds() {
         IntervalValidator.Validation validation =
-                IntervalValidator.validate("0,59 * * * * WED", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0,59 * * * * WED", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Rejected.class, validation);
     }
 
@@ -48,27 +51,27 @@ class IntervalValidatorTest {
     @Test
     void certifiesLeapDayPlan() {
         IntervalValidator.Validation validation =
-                IntervalValidator.validate("0 0 0 29 2 *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0 0 0 29 2 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, validation);
     }
 
     @Test
     void dstTransitionsPassForHourlyCron() {
         IntervalValidator.Validation ny =
-                IntervalValidator.validate("0 0 * * * *", ZoneId.of("America/New_York"), MIN_MS);
+                IntervalValidator.validate("0 0 * * * *", ZoneId.of("America/New_York"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, ny);
         IntervalValidator.Validation lordHowe =
-                IntervalValidator.validate("0 0 * * * *", ZoneId.of("Australia/Lord_Howe"), MIN_MS);
+                IntervalValidator.validate("0 0 * * * *", ZoneId.of("Australia/Lord_Howe"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, lordHowe);
         IntervalValidator.Validation apia =
-                IntervalValidator.validate("0 0 * * * *", ZoneId.of("Pacific/Apia"), MIN_MS);
+                IntervalValidator.validate("0 0 * * * *", ZoneId.of("Pacific/Apia"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, apia);
     }
 
     @Test
     void halfHourZoneStillPassesHourlyCron() {
         IntervalValidator.Validation validation = IntervalValidator.validate(
-                "0 30 * * * *", ZoneId.of("Australia/Lord_Howe"), MIN_MS);
+                "0 30 * * * *", ZoneId.of("Australia/Lord_Howe"), EPOCH_BASE, MIN_MS);
         IntervalValidator.Validation.Passed passed = assertInstanceOf(IntervalValidator.Validation.Passed.class, validation);
         assertTrue(passed.minimumIntervalMs() >= MIN_MS);
     }
@@ -76,20 +79,20 @@ class IntervalValidatorTest {
     @Test
     void denseCronRejected() {
         IntervalValidator.Validation validation =
-                IntervalValidator.validate("* * * * * *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("* * * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Rejected.class, validation);
     }
 
     @Test
     void quartzSyntaxStillValidated() {
         IntervalValidator.Validation lastDay =
-                IntervalValidator.validate("0 0 0 L * *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0 0 0 L * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, lastDay);
         IntervalValidator.Validation nthDow =
-                IntervalValidator.validate("0 0 0 ? * 5#2", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0 0 0 ? * 5#2", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, nthDow);
         IntervalValidator.Validation nearestWeekday =
-                IntervalValidator.validate("0 0 0 1W * *", ZoneId.of("UTC"), MIN_MS);
+                IntervalValidator.validate("0 0 0 1W * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOf(IntervalValidator.Validation.Passed.class, nearestWeekday);
     }
 
@@ -155,7 +158,7 @@ class IntervalValidatorTest {
                 "*/30 * * * * *", false);
         for (Map.Entry<String, Boolean> expectation : expectations.entrySet()) {
             IntervalValidator.Validation validation =
-                    IntervalValidator.validate(expectation.getKey(), ZoneId.of("UTC"), MIN_MS);
+                    IntervalValidator.validate(expectation.getKey(), ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
             if (expectation.getValue()) {
                 assertInstanceOf(IntervalValidator.Validation.Passed.class, validation,
                         "expected PASS for: " + expectation.getKey());

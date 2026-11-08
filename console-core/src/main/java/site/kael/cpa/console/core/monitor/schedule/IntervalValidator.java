@@ -3,6 +3,7 @@ package site.kael.cpa.console.core.monitor.schedule;
 import org.springframework.scheduling.support.CronExpression;
 
 import java.lang.reflect.Field;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -11,6 +12,7 @@ import java.time.zone.ZoneRules;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Full-future minimum-interval proof for a parsed six-field cron inside one zone
@@ -26,11 +28,15 @@ import java.util.List;
  * sets, so the day trigger grid is the full Cartesian product, never a sampled
  * subsequence.</p>
  *
- * <p><b>P2 - finite prefix plus stable tail.</b> The proof covers all future explicit
- * history transitions and the complete first stable period of the annual lastRules tail
- * (or the final fixed-offset segment when no recurring rules exist). The prefix-to-tail
- * seam is evaluated separately. A certificate is issued only for that provider
- * identity; there is no fixed reference day that could fall behind a commit base.</p>
+ * <p><b>P2 - validation base point plus stable tail.</b> The proof covers the finite
+ * explicit prefix from the validation base point b (the caller's commit/save/enable
+ * instant, carried through {@code validate(...)} and {@code validateRules(...)}) up to
+ * the provider's stable-tail start T, then exactly one stable tail period
+ * {@code [T, T+CYCLE_MS)}: full {@code (b,T)} prefix coverage, the complete tail with all
+ * annual transitions, the prefix-to-tail seam and the tail cycle seam. Only the stable
+ * tail is closed analytically; the pre-b history of the provider is never walked and
+ * never shifted. A certificate is issued only for that provider identity plus base-point
+ * domain (see {@code CronCertificate#validFor}).</p>
  *
  * <p><b>P3 - absolute fixed-offset segmentation.</b> {@link ZoneWindows} tiles the
  * covered ranges contiguously along the provider's real transitions; each window has one
@@ -67,23 +73,39 @@ public final class IntervalValidator {
 
     public sealed interface Validation {
         record Passed(long minimumIntervalMs) implements Validation {
+            public Passed {
+                if (minimumIntervalMs == Long.MAX_VALUE) {
+                    throw new IllegalArgumentException("minimumIntervalMs must be a proven finite value");
+                }
+            }
         }
 
         record Rejected(String reason) implements Validation {
         }
     }
 
-    /** Validates the whole future trigger set of the plan against {@code minimumMs}. */
-    public static Validation validate(String cronExpression, ZoneId zone, long minimumMs) {
-        return validateRules(cronExpression, zone.getRules(), minimumMs);
+    /**
+     * Validates the plan's complete future trigger set at the given validation base point b
+     * against {@code minimumMs}. The proof covers every absolute instant strictly after b:
+     * the finite explicit prefix {@code (b, T)} and the full stable tail period. The whole
+     * pre-b history of the provider is deliberately outside the proof domain, so a purely
+     * historical violation can never reject a plan whose future is legal.
+     */
+    public static Validation validate(
+            String cronExpression, ZoneId zone, Instant basePoint, long minimumMs) {
+        Objects.requireNonNull(basePoint, "basePoint must be the actual validation/enable base point");
+        return validateRules(cronExpression, zone.getRules(), basePoint, minimumMs);
     }
 
     /**
      * Rule-level entry used by controlled provider fixtures (task V05/V13). It is
      * package-private test observability, not a public business API: the same P1-P7
-     * proof runs against the supplied {@link ZoneRules} identity.
+     * proof runs against the supplied {@link ZoneRules} identity and the caller's base
+     * point b.
      */
-    static Validation validateRules(String cronExpression, ZoneRules rules, long minimumMs) {
+    static Validation validateRules(
+            String cronExpression, ZoneRules rules, Instant basePoint, long minimumMs) {
+        Objects.requireNonNull(basePoint, "basePoint must be the actual validation/enable base point");
         CronExpression expression;
         try {
             expression = CronExpression.parse(cronExpression);
@@ -92,7 +114,7 @@ public final class IntervalValidator {
         }
         long[] dayParts = CronPolicy.dayPartBitsets(cronExpression);
         DayPartGrid grid = dayParts == null ? null : new DayPartGrid(dayParts[0], dayParts[1], dayParts[2]);
-        return validateInternal(expression, rules, minimumMs, grid);
+        return validateInternal(expression, rules, basePoint, minimumMs, grid);
     }
 
     /**
@@ -101,8 +123,12 @@ public final class IntervalValidator {
      * historic prefix is never shifted by a calendar cycle.
      */
     private static Validation validateInternal(
-            CronExpression expression, ZoneRules rules, long minimumMs, DayPartGrid grid) {
-        ZoneWindows.Coverage coverage = ZoneWindows.enumerateFullFuture(rules);
+            CronExpression expression, ZoneRules rules, Instant basePoint, long minimumMs,
+            DayPartGrid grid) {
+        // P2: the proof domain starts at the actual validation base point b. Windows that
+        // end at/below b are dropped, the window containing b keeps only its future half;
+        // pre-b history never participates and can never reject a legal future plan.
+        ZoneWindows.Coverage coverage = ZoneWindows.enumerateFullFuture(rules, basePoint);
         WindowSummary prefix = scanWindowList(expression, rules, coverage.prefix(), minimumMs, grid);
         if (prefix.rejection != null) {
             return new Validation.Rejected(prefix.rejection);
@@ -112,21 +138,18 @@ public final class IntervalValidator {
             return new Validation.Rejected(tail.rejection);
         }
         long minimum = Long.MAX_VALUE;
-        long firstTrigger = Long.MIN_VALUE;
         long lastTrigger = Long.MIN_VALUE;
         boolean anyTrigger = prefix.anyTrigger || tail.anyTrigger;
         if (prefix.anyTrigger) {
             minimum = prefix.minimum;
-            firstTrigger = prefix.firstMs;
             lastTrigger = prefix.lastMs;
         }
         if (tail.anyTrigger) {
             if (!prefix.anyTrigger) {
                 minimum = tail.minimum;
-                firstTrigger = tail.firstMs;
                 lastTrigger = tail.lastMs;
             } else {
-                // Prefix -> tail seam: the last prefix trigger to the first tail trigger.
+                // Prefix -> tail seam: the last future prefix trigger to the first tail trigger.
                 long seam = tail.firstMs - prefix.lastMs;
                 if (seam < minimumMs) {
                     return new Validation.Rejected(describeViolation(seam, prefix.lastMs));
@@ -154,7 +177,7 @@ public final class IntervalValidator {
             return new Validation.Rejected("no future triggers found; the plan never fires");
         }
         if (!anyTrigger) {
-            return new Validation.Rejected("no future triggers found; the plan never fires");
+            return new Validation.Rejected("no future triggers found after the validation base point");
         }
         if (minimum == Long.MAX_VALUE) {
             // Single-trigger stable period: the cycle seam is the actual minimum and was
@@ -718,29 +741,6 @@ public final class IntervalValidator {
         return wallMs;
     }
 
-    /**
-     * The complete-list day walk, retained as the proof path for plans with
-     * Quartz-composite fields and as the semantic reference for the run-length proof.
-     * O(triggers of the day).
-     */
-    private static DayBounds listDayBounds(
-            CronExpression expression, ZoneRules rules, ZoneWindows.Window window, LocalDate date) {
-        List<Long> triggers = new DayTriggers(expression, rules, window, date).triggers;
-        if (triggers.isEmpty()) {
-            return null;
-        }
-        long inDayMin = Long.MAX_VALUE;
-        long violating = Long.MIN_VALUE;
-        for (int i = 1; i < triggers.size(); i++) {
-            long gap = triggers.get(i) - triggers.get(i - 1);
-            if (gap < inDayMin) {
-                inDayMin = gap;
-                violating = triggers.get(i - 1);
-            }
-        }
-        return new DayBounds(triggers.get(0), triggers.get(triggers.size() - 1), inDayMin, violating);
-    }
-
     private static String describeViolation(long gap, long atMs) {
         return "minimum interval violated in the Gregorian cycle near "
                 + LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(atMs), ZoneId.of("UTC"))
@@ -748,42 +748,40 @@ public final class IntervalValidator {
     }
 
     /**
-     * P1/P3 projection of one local date: the complete day-part instant grid of the parsed
-     * match sets, resolved through the window offset and clipped to the window interior.
-     * The result is the exact absolute trigger list of this date inside this window - gap
-     * dates contribute nothing, overlap dates contribute every copy.
+     * Enumerates one local date's absolute triggers inside the window's offset (P1/P3)
+     * and clips them to the proof domain strictly after the validation base point b.
+     * Pre-base triggers (on the boundary day whose window starts at b) therefore cannot
+     * enter the proof prefix; the boundary day still contributes every trigger after b.
      */
-    static final class DayTriggers {
-        final List<Long> triggers;
-
-        DayTriggers(CronExpression expression, ZoneRules rules, ZoneWindows.Window window, LocalDate date) {
-            LocalDateTime dayStart = date.atStartOfDay();
-            LocalDateTime dayEnd = dayStart.plusDays(1);
-            LocalDateTime cursor = dayStart.minusNanos(1);
-            List<Long> found = new ArrayList<>();
-            while (true) {
-                LocalDateTime next = expression.next(cursor);
-                if (next == null || !next.isBefore(dayEnd)) {
-                    break;
-                }
-                // P3: a wall candidate is a real trigger only when the window offset is one
-                // of its valid offsets; gap walls contribute no candidate in any window.
-                if (rules.getValidOffsets(next).contains(window.offset)) {
-                    long instantMs = next.toInstant(window.offset).toEpochMilli();
-                    if (instantMs >= window.startMs && instantMs < window.endMs) {
-                        found.add(instantMs);
-                    }
-                }
-                cursor = next;
-            }
-            Collections.sort(found);
-            this.triggers = found;
-        }
-    }
-
-    /** Enumerates one local date's absolute triggers inside the window's offset (P1/P3). */
     static List<Long> dayTriggersInWindow(
-            CronExpression expression, ZoneRules rules, ZoneWindows.Window window, LocalDate date) {
-        return new DayTriggers(expression, rules, window, date).triggers;
+            CronExpression expression, ZoneRules rules, ZoneWindows.Window window, LocalDate date,
+            Instant basePoint) {
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = dayStart.plusDays(1);
+        // Always walk the complete local day from its start; pre-base candidates are
+        // dropped by the absolute strict-after clip below (CronExpression.next is strictly
+        // greater-than, so walking from dayStart-1ns emits every candidate including any
+        // that is only 'equal by wall clock' to the base).
+        LocalDateTime cursor = dayStart.minusNanos(1);
+        List<Long> found = new ArrayList<>();
+        while (true) {
+            LocalDateTime next = expression.next(cursor);
+            if (next == null || !next.isBefore(dayEnd)) {
+                break;
+            }
+            // P3: a wall candidate is a real trigger only when the window offset is one
+            // of its valid offsets; gap walls contribute no candidate in any window.
+            if (rules.getValidOffsets(next).contains(window.offset)) {
+                long instantMs = next.toInstant(window.offset).toEpochMilli();
+                if (instantMs >= window.startMs && instantMs < window.endMs
+                        && instantMs > basePoint.toEpochMilli()) {
+                    found.add(instantMs);
+                }
+            }
+            cursor = next;
+        }
+        Collections.sort(found);
+        return found;
     }
+
 }
