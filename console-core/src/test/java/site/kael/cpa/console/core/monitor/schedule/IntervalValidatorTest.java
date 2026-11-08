@@ -107,14 +107,14 @@ class IntervalValidatorTest {
         List<Long> gapExpected = oracleLocalDateTriggers(gapIterator, zone, gapDate);
         List<Long> gapActual = IntervalValidatorForTesting.dayTriggers(
                 org.springframework.scheduling.support.CronExpression.parse("0 * * * * *"),
-                zone.getRules(), gapDate);
+                zone, gapDate);
         assertEquals(gapExpected, gapActual,
                 "dayTriggers must match the independent iterator oracle on the gap day");
         // The overlap day must carry both offset copies (01:00-01:59 local appears twice).
         java.time.LocalDate overlapDate = java.time.LocalDate.of(2026, 11, 1);
         List<Long> overlap = IntervalValidatorForTesting.dayTriggers(
                 org.springframework.scheduling.support.CronExpression.parse("0 * * * * *"),
-                zone.getRules(), overlapDate);
+                zone, overlapDate);
         assertEquals(1500, overlap.size(),
                 "overlap day should carry 1440 normal + 60 duplicate overlap members: got "
                         + overlap.size());

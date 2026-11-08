@@ -356,7 +356,7 @@ public final class MonitorLifecycleManager {
     }
 
     /** Internal marker so start() can classify certificate failures precisely. */
-    private static final class MonitorLifecycleManagerLifecycleFailure extends RuntimeException {
+    static final class MonitorLifecycleManagerLifecycleFailure extends RuntimeException {
         MonitorLifecycleManagerLifecycleFailure(String message) {
             super(message);
         }
@@ -391,6 +391,11 @@ public final class MonitorLifecycleManager {
             // Unparsable plan text is already blocked through the certificate path; scanning
             // must not throw here and silently skip the rest of the recovery.
         }
+    }
+
+    /** Package-private revalidation hook for the T07.R2 certificate-failure self-check. */
+    void revalidateCertificatesForTesting() throws SQLException {
+        revalidateCertificates();
     }
 
     /** Parses the stored certificate text back into its bound components. */
