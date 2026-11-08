@@ -435,10 +435,17 @@ public final class TaskManager {
         }
     }
 
-    /** Stable certificate storage text binding cron/zone/tzdb/algorithm and generation time. */
+    /**
+     * Stable certificate storage text binding the cron/zone/tzdb/algorithm identity, the
+     * proof-domain base point and the generation time. The current v4 payload has five
+     * colon-separated fields; earlier four-field rows are deliberately left in place as
+     * legacy certificates and cannot be accepted as v4 proofs on load.
+     */
     private static String certificateStorage(CronCertificate certificate) {
         return certificate.tzdbVersion() + ":" + certificate.algorithmVersion()
-                + ":" + certificate.minimumIntervalMs() + ":" + certificate.generatedAt().toEpochMilli();
+                + ":" + certificate.minimumIntervalMs()
+                + ":" + certificate.basePoint().toEpochMilli()
+                + ":" + certificate.generatedAt().toEpochMilli();
     }
 
     private Optional<MonitorTask> readTask(String taskId) throws SQLException {

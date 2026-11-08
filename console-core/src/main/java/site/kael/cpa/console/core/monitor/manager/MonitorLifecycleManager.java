@@ -398,24 +398,30 @@ public final class MonitorLifecycleManager {
         revalidateCertificates();
     }
 
-    /** Parses the stored certificate text back into its bound components. */
+    /**
+     * Parses the stored certificate text back into its bound components. A current v4
+     * certificate must persist all five storage fields, including the actual proof-domain
+     * base point: restarting cannot invent that domain. A legacy four-field row describes
+     * an earlier algorithm and is parsed with its historical algorithm version so the
+     * validator rejects it under v4; it never borrows {@code Instant.MIN} as a v4 proof
+     * base. Corrupt storage remains unparseable and therefore invalid.
+     */
     private site.kael.cpa.console.core.monitor.model.CronCertificate parseCertificate(
             String stored, MonitorTask task) {
         if (stored == null || stored.isBlank()) {
             return null;
         }
-        String[] parts = stored.split(":");
-        if (parts.length != 4) {
+        String[] parts = stored.split(":", 5);
+        boolean legacyFormat = parts.length == 4;
+        if (!legacyFormat && parts.length != 5) {
             return null;
         }
         try {
-            // Legacy stored certificates (v3 and earlier) have no base-point field; they
-            // are whole-future domain certificates, so parse them with the epoch-minimum
-            // base point. Algorithm version 4 re-issues with the real certification instant.
+            long basePointMs = legacyFormat ? 0L : Long.parseLong(parts[3]);
             return new site.kael.cpa.console.core.monitor.model.CronCertificate(
                     task.cronExpression(), task.zoneId(), parts[0], Integer.parseInt(parts[1]),
-                    Long.parseLong(parts[2]), Instant.ofEpochMilli(Long.MIN_VALUE),
-                    Instant.ofEpochMilli(Long.parseLong(parts[3])));
+                    Long.parseLong(parts[2]), Instant.ofEpochMilli(basePointMs),
+                    Instant.ofEpochMilli(Long.parseLong(parts[legacyFormat ? 3 : 4])));
         } catch (RuntimeException exception) {
             return null;
         }
