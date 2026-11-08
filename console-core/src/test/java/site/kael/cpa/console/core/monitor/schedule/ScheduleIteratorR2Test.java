@@ -304,7 +304,7 @@ class ScheduleIteratorR2Test {
     @Test
     void v08_algorithmVersionUpgradeInvalidatesOldCertificates() {
         // The stored certificate format pins algorithmVersion; v1 is no longer valid.
-        assertEquals(2, CronCertificate.CURRENT_ALGORITHM_VERSION,
+        assertEquals(3, CronCertificate.CURRENT_ALGORITHM_VERSION,
                 "algorithm version must have been bumped for the complete-proof rework");
         var validator = new CronPolicyValidator(java.time.Clock.fixed(
                 Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));

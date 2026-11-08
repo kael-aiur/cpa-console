@@ -8,10 +8,12 @@ import java.time.ZoneId;
 import java.util.Objects;
 
 /**
- * Dedicated D4 configuration validator: parses a plan, proves the full-future minimum interval
- * and produces a {@link CronCertificate} bound to the exact tzdb of the running JDK. Cached
- * certificates stay valid only while cron text, zone id, tzdb version and algorithm version are
- * unchanged; a tzdb upgrade invalidates every stored certificate so tasks re-validate on start.
+ * Dedicated D4 configuration validator: parses a plan, proves the finite explicit-history
+ * prefix plus one stable-tail period (task v1.2-r3 T03.R3-A / P1-P7) and produces a
+ * {@link CronCertificate} bound to the exact tzdb of the running JDK. Cached certificates
+ * stay valid only while cron text, zone id, tzdb version and algorithm version are
+ * unchanged; a tzdb upgrade or an algorithm rework invalidates every stored certificate
+ * so tasks re-validate (or stay blocked until explicit recovery) on start.
  */
 public final class CronPolicyValidator {
 
