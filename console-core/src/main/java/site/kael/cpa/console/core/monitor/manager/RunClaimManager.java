@@ -122,10 +122,20 @@ public final class RunClaimManager {
      * even when the cron was edited back to the same time.
      */
     public ClaimReceipt claim(ClaimRequest request) {
+        return claim(request, null);
+    }
+
+    /**
+     * Claim transaction variant with the caller's common tick instant (T06.R3/D4.3).
+     * When {@code commonNowMs} is non-null it is both the claim's {@code claimed_at} and
+     * the advance base: the successor is the earliest plan instant strictly after this
+     * shared now, never a catch-up sequence of instants already past it.
+     */
+    public ClaimReceipt claim(ClaimRequest request, Long commonNowMs) {
         Objects.requireNonNull(request, "request");
         ClaimReceipt receipt = transactions.execute(status -> {
             try {
-                return doClaim(request);
+                return doClaim(request, commonNowMs);
             } catch (SQLException exception) {
                 status.setRollbackOnly();
                 throw new IllegalStateException("Claim transaction failed", exception);
@@ -134,7 +144,7 @@ public final class RunClaimManager {
         return receipt != null ? receipt : ClaimReceipt.of(ClaimOutcome.TASK_STATE_CHANGED);
     }
 
-    private ClaimReceipt doClaim(ClaimRequest request) throws SQLException {
+    private ClaimReceipt doClaim(ClaimRequest request, Long commonNowMs) throws SQLException {
         MonitorTask task = taskManager.requireForClaim(request.taskId());
         if (!task.enabled() || task.blockedReason() != null) {
             return ClaimReceipt.of(ClaimOutcome.TASK_STATE_CHANGED);
@@ -142,7 +152,7 @@ public final class RunClaimManager {
         if (task.scheduleRevision() != request.expectedScheduleRevision()) {
             return ClaimReceipt.of(ClaimOutcome.TASK_STATE_CHANGED);
         }
-        long now = clock.instant().toEpochMilli();
+        long now = commonNowMs != null ? commonNowMs : clock.instant().toEpochMilli();
         ClaimInsert insert = new ClaimInsert(
                 UUID.randomUUID().toString(),
                 task.taskId(),
@@ -159,7 +169,8 @@ public final class RunClaimManager {
         if (result == ClaimResult.DUPLICATE_PLAN_KEY) {
             return ClaimReceipt.of(ClaimOutcome.DUPLICATE_PLAN_KEY);
         }
-        Long advanced = advanceNextFire(task.taskId(), request.scheduledAt(), task.scheduleRevision());
+        Long advanced = advanceNextFire(task.taskId(), request.scheduledAt(),
+                task.scheduleRevision(), commonNowMs);
         runDao.bumpDataRevision(writeConnection());
         return new ClaimReceipt(ClaimOutcome.CLAIMED, insert.runId(), advanced);
     }
@@ -347,8 +358,23 @@ public final class RunClaimManager {
      * revision and its current next_fire_at still equals the instant being claimed. This
      * prevents a second claim from advancing the pointer twice for one plan.
      */
-    private Long advanceNextFire(String taskId, long scheduledAt, long expectedRevision) throws SQLException {
-        Instant claimed = Instant.ofEpochMilli(scheduledAt);
+    private Long advanceNextFire(String taskId, long scheduledAt, long expectedRevision)
+            throws SQLException {
+        return advanceNextFire(taskId, scheduledAt, expectedRevision, null);
+    }
+
+    /**
+     * Advance solve with the T06.R3/D4.3 common-now base. The successor is the earliest
+     * plan instant strictly after {@code commonNowMs}; the claimed plan's own successor
+     * remains available on later ticks when that successor is still future, while instants
+     * already past the common now are never generated as a catch-up batch.
+     */
+    private Long advanceNextFire(
+            String taskId, long scheduledAt, long expectedRevision, Long commonNowMs)
+            throws SQLException {
+        Instant claimed = commonNowMs != null
+                ? Instant.ofEpochMilli(commonNowMs)
+                : Instant.ofEpochMilli(scheduledAt);
         MonitorTask task = taskManager.requireForClaim(taskId);
         Instant successor = ScheduleIterator.of(task.cronExpression(), task.zoneId()).next(claimed);
         String sql = "UPDATE monitor_tasks SET next_fire_at = ? "

@@ -478,7 +478,7 @@ public final class MonitorLifecycleManager {
             try {
                 List<ExecutionManager.DuePlan> due = collectDuePlans(nowMs);
                 if (!due.isEmpty()) {
-                    executionManager.claimDuePlans(due);
+                    executionManager.claimDuePlans(due, nowMs);
                 }
                 List<String> claimed = listClaimedRunIds();
                 for (String runId : claimed) {
