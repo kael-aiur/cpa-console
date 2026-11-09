@@ -44,6 +44,9 @@ import javax.sql.DataSource;
  *   <li>CONFIG_ERROR blocks persist until an explicit re-enable with live read-only
  *       revalidation; a target rejection is recorded per run and never auto-disables a
  *       task.</li>
+ *   <li>Every enable path re-certifies the stored plan (current algorithm identity and
+ *       the caller's base point), so enable never silently reuses a legacy or
+ *       expired-domain certificate left in storage.</li>
  * </ul>
  * All edits take {@link MonitorConfigLockManager} inside the same order PATCH and the T06
  * send fence share, so an old claim can never race a patch into a second dispatch.
@@ -209,6 +212,12 @@ public final class TaskManager {
      * compare-and-set on row_version: a stale or concurrent edit fails without overwriting.
      * Plan/zone edits re-certify and recompute the strictly-future next fire; disabling clears
      * next_fire_at. Any accepted edit bumps schedule_revision and the data revision.
+     * <p>
+     * Enabling (first enable, disable-then-enable and blocked recovery alike) re-certifies
+     * the stored plan with the caller's base point, so the persisted proof identity and
+     * base-point domain always match the enabling instant. Enabling can therefore never
+     * silently reuse a legacy or expired-domain certificate that a lifecycle block had
+     * left in storage.</p>
      */
     public MonitorTask update(String taskId, UpdateRequest request) throws SQLException {
         Objects.requireNonNull(taskId, "taskId");
@@ -364,6 +373,16 @@ public final class TaskManager {
                     | IllegalArgumentException | IllegalStateException exception) {
                 throw new TaskManagerException(ErrorCode.CANDIDATE_EXPIRED,
                         "Bound target must be revalidated before enabling");
+            }
+            // Explicit (re-)enable must carry a CURRENT proof. The stored certificate is
+            // re-certified from the caller's own base point; enabling cannot silently
+            // reuse an earlier-domain or legacy-algorithm proof (D4.2 / R2-A-R4).
+            if (certificate == null) {
+                try {
+                    certificate = cronValidator.certify(existing.cronExpression(), existing.zoneId());
+                } catch (IllegalArgumentException exception) {
+                    throw new TaskManagerException(ErrorCode.PLAN_INVALID, exception.getMessage());
+                }
             }
         }
         applyUpdateRow(existing, request, name, enabled, certificate, nextFire,
