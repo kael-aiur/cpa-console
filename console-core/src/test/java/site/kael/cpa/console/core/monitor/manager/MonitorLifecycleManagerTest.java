@@ -253,6 +253,131 @@ class MonitorLifecycleManagerTest {
     }
 
     @Test
+    void storedV4CertificateRoundTripsBasePointAcrossRestart() throws Exception {
+        // Create -> save persists the actual base point (five-field v4 payload).
+        MonitorTask created = taskManager.find(task.taskId()).orElseThrow();
+        String stored = created.tzdbCertificate();
+        assertEquals(5, stored.split(":", 5).length,
+                "the stored v4 certificate must carry the base-point field");
+        String[] fields = stored.split(":", 5);
+        assertEquals(String.valueOf(MonitorIsolationTestSupport.BASE_TIME.toEpochMilli()), fields[3],
+                "the persisted base-point field must equal the certification base point");
+        // Restart-style recovery at a later instant still accepts the same proof domain:
+        // the lifecycle must not invent a new base point on load.
+        clock.set(MonitorIsolationTestSupport.BASE_TIME.plusMillis(90_000L));
+        MonitorLifecycleManager restartedHealthy = newLifecycle();
+        bindingManager().initialize("http://127.0.0.1:1");
+        restartedHealthy.start("http://127.0.0.1:1");
+        assertEquals(MonitorLifecycleManager.Phase.RUNNING, restartedHealthy.phase(),
+                "a persisted v4 certificate must survive restart: " + restartedHealthy.faultReason());
+        assertNull(taskManager.find(task.taskId()).orElseThrow().blockedReason());
+        restartedHealthy.stop();
+        // Rewriting the stored base-point field to the future must NOT keep the v4 proof
+        // valid after restart: use-before-basePoint stays outside the proven domain.
+        jdbc.update("UPDATE monitor_tasks SET tzdb_certificate = ? WHERE task_id = ?",
+                fields[0] + ":" + fields[1] + ":" + fields[2] + ":"
+                        + MonitorIsolationTestSupport.BASE_TIME.plusMillis(120_000L).toEpochMilli()
+                        + ":" + fields[4],
+                task.taskId());
+        clock.set(MonitorIsolationTestSupport.BASE_TIME.plusMillis(90_000L));
+        MonitorLifecycleManager restarted = newLifecycle();
+        assertThrows(MonitorLifecycleManager.MonitorLifecycleManagerLifecycleFailure.class,
+                restarted::revalidateCertificatesForTesting,
+                "use-before-basePoint must fail restart validation, not silently pass");
+        assertEquals("TZDB_CERTIFICATE_INVALID",
+                taskManager.find(task.taskId()).orElseThrow().blockedReason());
+    }
+
+    @Test
+    void legacyFourFieldCertificateNeverPassesAsV4AndStaysBlocked() throws Exception {
+        // Seed the exact legacy storage shape (no base-point field) left by earlier builds.
+        jdbc.update("UPDATE monitor_tasks SET tzdb_certificate = ? WHERE task_id = ?",
+                MonitorIsolationTestSupport.cronValidator(clock).tzdbVersion() + ":1:60000:"
+                        + MonitorIsolationTestSupport.BASE_TIME.toEpochMilli(),
+                task.taskId());
+        clock.set(MonitorIsolationTestSupport.BASE_TIME.plusMillis(90_000L));
+        MonitorLifecycleManager lifecycle = newLifecycle();
+        assertThrows(MonitorLifecycleManager.MonitorLifecycleManagerLifecycleFailure.class,
+                lifecycle::revalidateCertificatesForTesting,
+                "a legacy four-field certificate must not be accepted as a v4 proof");
+        MonitorTask blocked = taskManager.find(task.taskId()).orElseThrow();
+        assertEquals("TZDB_CERTIFICATE_INVALID", blocked.blockedReason());
+        assertFalse(blocked.enabled());
+    }
+
+    @Test
+    void forgedLegacyFourFieldAlgorithm4CertificateIsNeverValidV4() throws Exception {
+        // The four-field legacy shape cannot carry a v4 proof base point. Seed it with a
+        // matching tzdb/cron/zone and a forged algorithm field of 4: parsing must still
+        // keep it historical (never promote it to CURRENT_ALGORITHM_VERSION), so the real
+        // lifecycle validator rejects it and the restart-safe epoch fallback cannot buy a
+        // whole-future v4 proof domain.
+        String stored = MonitorIsolationTestSupport.cronValidator(clock).tzdbVersion() + ":4:60000:"
+                + MonitorIsolationTestSupport.BASE_TIME.toEpochMilli();
+        jdbc.update("UPDATE monitor_tasks SET tzdb_certificate = ? WHERE task_id = ?",
+                stored, task.taskId());
+        clock.set(MonitorIsolationTestSupport.BASE_TIME.plusMillis(90_000L));
+        MonitorLifecycleManager lifecycle = newLifecycle();
+        assertThrows(MonitorLifecycleManager.MonitorLifecycleManagerLifecycleFailure.class,
+                lifecycle::revalidateCertificatesForTesting,
+                "a four-field certificate claiming algorithm 4 must not pass as current v4");
+        MonitorTask blocked = taskManager.find(task.taskId()).orElseThrow();
+        assertEquals("TZDB_CERTIFICATE_INVALID", blocked.blockedReason());
+        assertFalse(blocked.enabled());
+        // Corrupt four-field storage (non-numeric field) must fail closed the same way.
+        jdbc.update("UPDATE monitor_tasks SET tzdb_certificate = ? WHERE task_id = ?",
+                MonitorIsolationTestSupport.cronValidator(clock).tzdbVersion() + ":4:60000:not-a-number",
+                task.taskId());
+        MonitorLifecycleManager corrupt = newLifecycle();
+        assertThrows(MonitorLifecycleManager.MonitorLifecycleManagerLifecycleFailure.class,
+                corrupt::revalidateCertificatesForTesting,
+                "corrupt four-field storage must fail closed, never as v4");
+        assertEquals("TZDB_CERTIFICATE_INVALID",
+                taskManager.find(task.taskId()).orElseThrow().blockedReason());
+    }
+
+    @Test
+    void fiveFieldV4CertificateStillCarriesItsRealBasePointDomain() throws Exception {
+        // Positive control: the genuine five-field v4 payload keeps the persisted base
+        // point and passes restart validation inside its proven domain.
+        MonitorTask created = taskManager.find(task.taskId()).orElseThrow();
+        String[] fields = created.tzdbCertificate().split(":", 5);
+        assertEquals(5, fields.length);
+        assertEquals(String.valueOf(MonitorIsolationTestSupport.BASE_TIME.toEpochMilli()), fields[3]);
+        clock.set(MonitorIsolationTestSupport.BASE_TIME.plusMillis(90_000L));
+        MonitorLifecycleManager lifecycle = newLifecycle();
+        lifecycle.revalidateCertificatesForTesting();
+        assertNull(taskManager.find(task.taskId()).orElseThrow().blockedReason());
+
+        // A five-field payload claiming another algorithm identity is not a current proof
+        // (asserts the historical algorithm=1 rejection already proven in NATI-156's
+        // legacy test, so only the 4->3 identity differs here).
+        jdbc.update("UPDATE monitor_tasks SET tzdb_certificate = ? WHERE task_id = ?",
+                fields[0] + ":3:" + fields[2] + ":" + fields[3] + ":" + fields[4], task.taskId());
+        MonitorLifecycleManager stale = newLifecycle();
+        assertThrows(MonitorLifecycleManager.MonitorLifecycleManagerLifecycleFailure.class,
+                stale::revalidateCertificatesForTesting,
+                "a five-field algorithm=3 row must stay a historical certificate");
+        assertEquals("TZDB_CERTIFICATE_INVALID",
+                taskManager.find(task.taskId()).orElseThrow().blockedReason());
+
+        // Inside the same tzdb identity, a use instant moved before the persisted base
+        // point stays outside the proven domain (restart-equivalent negative, mirroring
+        // the dedicated storedV4CertificateRoundTripsBasePointAcrossRestart check):
+        // restart validation must reject it.
+        jdbc.update("UPDATE monitor_tasks SET tzdb_certificate = ? WHERE task_id = ?",
+                fields[0] + ":" + fields[1] + ":" + fields[2] + ":"
+                        + MonitorIsolationTestSupport.BASE_TIME.plusMillis(120_000L).toEpochMilli()
+                        + ":" + fields[4], task.taskId());
+        MonitorLifecycleManager beforeBase = newLifecycle();
+        assertThrows(MonitorLifecycleManager.MonitorLifecycleManagerLifecycleFailure.class,
+                beforeBase::revalidateCertificatesForTesting,
+                "five-field v4 with use-before-basePoint must fail restart validation");
+        assertEquals("TZDB_CERTIFICATE_INVALID",
+                taskManager.find(task.taskId()).orElseThrow().blockedReason());
+    }
+
+    @Test
     void startupRecomputesNextFireFromNowWithoutReplayingTheMissedPlan() throws Exception {
         // Simulate downtime: the old next_fire is already in the past.
         jdbc.update("UPDATE monitor_tasks SET next_fire_at = ? WHERE task_id = ?",

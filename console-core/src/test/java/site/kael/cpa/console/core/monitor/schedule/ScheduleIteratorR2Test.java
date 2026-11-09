@@ -28,6 +28,9 @@ class ScheduleIteratorR2Test {
 
     private static final long MIN_MS = CronPolicy.MINIMUM_INTERVAL_MS;
 
+    /** Whole-future proof domain for the retained R2 matrix (b = provider epoch floor). */
+    private static final java.time.Instant EPOCH_BASE = java.time.Instant.ofEpochMilli(Long.MIN_VALUE);
+
     /** Independent minute-grid oracle: absolute instants of local minute matches in the range. */
     private static List<Instant> oracleMinuteGrid(
             ZoneId zone, LocalDateTime fromLocal, LocalDateTime untilLocal,
@@ -52,10 +55,10 @@ class ScheduleIteratorR2Test {
     @Test
     void v01_wednesdayBoundaryPairAndBasicMinutePairRejected() {
         // 0,59 * * * * WED - 59 s -> 00 across every Wednesday minute boundary.
-        var wednesday = IntervalValidator.validate("0,59 * * * * WED", ZoneId.of("UTC"), MIN_MS);
+        var wednesday = IntervalValidator.validate("0,59 * * * * WED", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOfRejected(wednesday);
         // 0,59 * * * * * - the basic same-hour minute pair.
-        var basic = IntervalValidator.validate("0,59 * * * * *", ZoneId.of("UTC"), MIN_MS);
+        var basic = IntervalValidator.validate("0,59 * * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOfRejected(basic);
         // Independent expectation: 00:00:00 and 00:00:59 UTC on some Wednesday are 59 s apart.
         var someWednesday = LocalDateTime.of(2026, 6, 17, 0, 0);
@@ -70,7 +73,7 @@ class ScheduleIteratorR2Test {
     void v02_leapDaySafeAcceptedAndSparseLeapDayRejected() {
         // The leap day alone has real triggers once per four-year pattern; min gap is the
         // tail-to-head seam of the Gregorian cycle, NOT Long.MAX_VALUE.
-        var safe = IntervalValidator.validate("0 0 0 29 2 *", ZoneId.of("UTC"), MIN_MS);
+        var safe = IntervalValidator.validate("0 0 0 29 2 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         var passed = assertInstanceOfPassed(safe);
         assertTrue(passed.minimumIntervalMs() >= MIN_MS);
         assertFalse(passed.minimumIntervalMs() == Long.MAX_VALUE,
@@ -79,7 +82,7 @@ class ScheduleIteratorR2Test {
         assertNotNull(Instant.parse("2028-02-29T00:00:00Z"));
         // B-CRON-1b: 0,59 on the leap day contains the concrete 59 s / 1 s pairs of
         // 2028-02-29 (independent expectation built from local date-times).
-        var unsafe = IntervalValidator.validate("0,59 * * 29 2 *", ZoneId.of("UTC"), MIN_MS);
+        var unsafe = IntervalValidator.validate("0,59 * * 29 2 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOfRejected(unsafe);
         // Non-400-multiple centuries are NOT leap years; 400-multiples are.
         assertFalse(LocalDateTime.of(2100, 3, 1, 0, 0).minusDays(1).getDayOfMonth() == 29);
@@ -90,23 +93,23 @@ class ScheduleIteratorR2Test {
     @Test
     void v03_denseHourGridExactIntervals() {
         // 17 */2 * * * * UTC: interval exactly 120 s; 0 59 * * * *: 60 s per hour.
-        var everyTwoHours = IntervalValidator.validate("17 */2 * * * *", ZoneId.of("UTC"), MIN_MS);
+        var everyTwoHours = IntervalValidator.validate("17 */2 * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertEquals(120_000L, assertInstanceOfPassed(everyTwoHours).minimumIntervalMs());
-        var hourly59 = IntervalValidator.validate("0 59 * * * *", ZoneId.of("UTC"), MIN_MS);
+        var hourly59 = IntervalValidator.validate("0 59 * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertEquals(3_600_000L, assertInstanceOfPassed(hourly59).minimumIntervalMs());
         // WED:59 remains legal: the 59-minute mark recurs every hour of every Wednesday,
         // so the proven minimum is the hourly 3 600 000 ms (independent expectation).
-        var wed59 = IntervalValidator.validate("0 59 * * * WED", ZoneId.of("UTC"), MIN_MS);
+        var wed59 = IntervalValidator.validate("0 59 * * * WED", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertEquals(3_600_000L, assertInstanceOfPassed(wed59).minimumIntervalMs());
         // 59,0 in the minute field: 60 s spacing across the boundary is NOT violated.
-        var minutePair = IntervalValidator.validate("0 59,0 * * * *", ZoneId.of("UTC"), MIN_MS);
+        var minutePair = IntervalValidator.validate("0 59,0 * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertEquals(60_000L, assertInstanceOfPassed(minutePair).minimumIntervalMs());
         // Cross-midnight/月底/年底 sparse plans keep real proven intervals.
-        var newYearEve = IntervalValidator.validate("0 0 23 31 12 *", ZoneId.of("UTC"), MIN_MS);
+        var newYearEve = IntervalValidator.validate("0 0 23 31 12 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         var newYearPassed = assertInstanceOfPassed(newYearEve);
         assertTrue(newYearPassed.minimumIntervalMs() >= MIN_MS);
         // Dense every-30-s is rejected with a concrete near-pair.
-        var dense = IntervalValidator.validate("*/30 * * * * *", ZoneId.of("UTC"), MIN_MS);
+        var dense = IntervalValidator.validate("*/30 * * * * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOfRejected(dense);
     }
 
@@ -126,12 +129,12 @@ class ScheduleIteratorR2Test {
                 "0 0 0 ? * 1",          // numeric Sunday (Spring: 0 = SUN)
                 "0 0 0 ? * 7");         // numeric Saturday (Spring: 7 = SAT)
         for (String plan : validPlans) {
-            var validation = IntervalValidator.validate(plan, ZoneId.of("UTC"), MIN_MS);
+            var validation = IntervalValidator.validate(plan, ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
             assertInstanceOfPassed(validation, "plan must certify: " + plan);
         }
         // Invalid/unsupported shapes: the shared policy check throws; validate() rejects.
         assertThrows(IllegalArgumentException.class, () -> CronPolicy.rejectUnsupportedShape("0 0 0 * *"));
-        assertInstanceOfRejected(IntervalValidator.validate("0 0 0 * *", ZoneId.of("UTC"), MIN_MS));
+        assertInstanceOfRejected(IntervalValidator.validate("0 0 0 * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS));
         List<String> invalidPlans = List.of(
                 "0 0 0 8L * *",         // unsupported: L with an invalid combination
                 "0 0 0 ? * 9",          // weekday 9 out of range
@@ -139,7 +142,7 @@ class ScheduleIteratorR2Test {
         for (String plan : invalidPlans) {
             boolean rejected = false;
             try {
-                var validation = IntervalValidator.validate(plan, ZoneId.of("UTC"), MIN_MS);
+                var validation = IntervalValidator.validate(plan, ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
                 rejected = validation instanceof IntervalValidator.Validation.Rejected;
             } catch (RuntimeException parseFailure) {
                 rejected = true;
@@ -152,7 +155,7 @@ class ScheduleIteratorR2Test {
     @Test
     void v05_impossibleDateAndAllGapPlansProduceNoFuture() {
         // 30 February: parser-level impossibility.
-        var feb30 = IntervalValidator.validate("0 0 0 30 2 *", ZoneId.of("UTC"), MIN_MS);
+        var feb30 = IntervalValidator.validate("0 0 0 30 2 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         assertInstanceOfRejected(feb30);
         var iterator = ScheduleIterator.of("0 0 0 30 2 *", "UTC");
         assertNull(iterator.next(Instant.parse("2026-01-01T00:00:00Z")),
@@ -167,8 +170,8 @@ class ScheduleIteratorR2Test {
             assertThrows(IllegalArgumentException.class, () -> CronPolicy.rejectUnsupportedShape(shape),
                     "policy gate must throw for: " + shape);
         }
-        assertInstanceOfRejected(IntervalValidator.validate("0 0 0 * *", ZoneId.of("UTC"), MIN_MS));
-        assertInstanceOfRejected(IntervalValidator.validate("0 0 0 1 1 * 2026", ZoneId.of("UTC"), MIN_MS));
+        assertInstanceOfRejected(IntervalValidator.validate("0 0 0 * *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS));
+        assertInstanceOfRejected(IntervalValidator.validate("0 0 0 1 1 * 2026", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS));
         // Illegal zone is rejected by the shared policy check.
         assertThrows(IllegalArgumentException.class, () -> CronPolicy.validateZone("Not/AZone"));
     }
@@ -204,7 +207,7 @@ class ScheduleIteratorR2Test {
         assertEquals(overlapExpected, overlapActual,
                 "overlap day hourly sequence must match the independent two-offset oracle");
         // Lord Howe half-hour transition: +10:30/+11:00 DST; hourly stays valid.
-        var lordHowe = IntervalValidator.validate("0 0 * * * *", ZoneId.of("Australia/Lord_Howe"), MIN_MS);
+        var lordHowe = IntervalValidator.validate("0 0 * * * *", ZoneId.of("Australia/Lord_Howe"), EPOCH_BASE, MIN_MS);
         assertInstanceOfPassed(lordHowe);
         // Apia skipped 2011-12-30 entirely: Dec 29 23:59:59 (-10) jumped straight to
         // Dec 31 00:00:00 (+14) at 2011-12-30T10:00:00Z. Independent expectations: from a
@@ -283,8 +286,8 @@ class ScheduleIteratorR2Test {
     @Test
     void v06_transitionWindowCronStaysProvable() {
         // Local 02:30 on the spring-forward day exists only via the gap; 01:30 has both.
-        var springGap = IntervalValidator.validate("0 30 2 8 3 *", ZoneId.of("America/New_York"), MIN_MS);
-        var fallOverlap = IntervalValidator.validate("0 30 1 1 11 *", ZoneId.of("America/New_York"), MIN_MS);
+        var springGap = IntervalValidator.validate("0 30 2 8 3 *", ZoneId.of("America/New_York"), EPOCH_BASE, MIN_MS);
+        var fallOverlap = IntervalValidator.validate("0 30 1 1 11 *", ZoneId.of("America/New_York"), EPOCH_BASE, MIN_MS);
         assertInstanceOfPassed(springGap, "annual gap-day plan must certify");
         assertInstanceOfPassed(fallOverlap, "annual overlap-day plan must certify");
     }
@@ -293,7 +296,7 @@ class ScheduleIteratorR2Test {
     void v07_cycleSeamProducesARealInterval() {
         // Yearly plan: the cycle-to-cycle seam is the actual minimum (365/366-day scale),
         // which must be returned instead of Long.MAX_VALUE.
-        var yearly = IntervalValidator.validate("0 0 0 1 1 *", ZoneId.of("UTC"), MIN_MS);
+        var yearly = IntervalValidator.validate("0 0 0 1 1 *", ZoneId.of("UTC"), EPOCH_BASE, MIN_MS);
         var passed = assertInstanceOfPassed(yearly);
         // Independent expectation: the minimum adjacent gap is the 365-day year
         // (365 * 86 400 000 = 31 536 000 000), bounded above by the leap-day year.
@@ -304,7 +307,7 @@ class ScheduleIteratorR2Test {
     @Test
     void v08_algorithmVersionUpgradeInvalidatesOldCertificates() {
         // The stored certificate format pins algorithmVersion; v1 is no longer valid.
-        assertEquals(2, CronCertificate.CURRENT_ALGORITHM_VERSION,
+        assertEquals(4, CronCertificate.CURRENT_ALGORITHM_VERSION,
                 "algorithm version must have been bumped for the complete-proof rework");
         var validator = new CronPolicyValidator(java.time.Clock.fixed(
                 Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
@@ -312,7 +315,8 @@ class ScheduleIteratorR2Test {
         assertTrue(validator.isCertificateValid(certificate, "0 0 12 * * *", "UTC"));
         // A v1-issued certificate under the same tzdb MUST be refused.
         var stale = new CronCertificate("0 0 12 * * *", "UTC",
-                certificate.tzdbVersion(), 1, 86_400_000L, Instant.parse("2025-01-01T00:00:00Z"));
+                certificate.tzdbVersion(), 1, 86_400_000L, certificate.basePoint(),
+                Instant.parse("2025-01-01T00:00:00Z"));
         assertFalse(validator.isCertificateValid(stale, "0 0 12 * * *", "UTC"));
     }
 

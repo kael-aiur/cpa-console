@@ -16,7 +16,8 @@ public final class IntervalValidatorForTesting {
     /** Package-private hook: one local date's absolute triggers inside a cycle window. */
     public static List<Long> dayTriggers(
             CronExpression expression, ZoneRules rules, ZoneWindows.Window window, LocalDate date) {
-        return IntervalValidator.dayTriggersInWindow(expression, rules, window, date);
+        return IntervalValidator.dayTriggersInWindow(expression, rules, window, date,
+                java.time.Instant.ofEpochMilli(Long.MIN_VALUE));
     }
 
     /**
@@ -31,7 +32,8 @@ public final class IntervalValidatorForTesting {
         List<Long> merged = new java.util.ArrayList<>();
         for (ZoneWindows.Window window : ZoneWindows.enumerateCycle(rules)) {
             if (window.endMs > dayStartMs && window.startMs < dayEndMs) {
-                merged.addAll(IntervalValidator.dayTriggersInWindow(expression, rules, window, date));
+                merged.addAll(IntervalValidator.dayTriggersInWindow(expression, rules, window, date,
+                    java.time.Instant.ofEpochMilli(Long.MIN_VALUE)));
             }
         }
         java.util.Collections.sort(merged);

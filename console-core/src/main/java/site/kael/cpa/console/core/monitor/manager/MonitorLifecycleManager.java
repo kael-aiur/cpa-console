@@ -398,20 +398,37 @@ public final class MonitorLifecycleManager {
         revalidateCertificates();
     }
 
-    /** Parses the stored certificate text back into its bound components. */
+    /**
+     * Parses the stored certificate text back into its bound components. A current v4
+     * certificate must persist all five storage fields, including the actual proof-domain
+     * base point: restarting cannot invent that domain. A legacy four-field row describes
+     * an earlier algorithm and is parsed with a non-current historical algorithm identity,
+     * regardless of the algorithm field stored in that old shape; a corrupt/forged
+     * four-field algorithm=4 row can never be promoted to v4. It also never borrows
+     * epoch 0 as a whole-future v4 proof base. Corrupt storage remains unparseable and
+     * therefore invalid.
+     */
     private site.kael.cpa.console.core.monitor.model.CronCertificate parseCertificate(
             String stored, MonitorTask task) {
         if (stored == null || stored.isBlank()) {
             return null;
         }
-        String[] parts = stored.split(":");
-        if (parts.length != 4) {
+        String[] parts = stored.split(":", 5);
+        boolean legacyFormat = parts.length == 4;
+        if (!legacyFormat && parts.length != 5) {
             return null;
         }
         try {
+            // Four fields cannot carry the v4 proof base point. Parse every legacy row with
+            // a historical non-current algorithm identity, even if its storage text claims
+            // 4; a forged/corrupt "legacy v4" can then only fail the current-algorithm
+            // check and can never borrow epoch 0 as a whole-future v4 domain.
+            int algorithmVersion = legacyFormat ? 1 : Integer.parseInt(parts[1]);
+            long basePointMs = legacyFormat ? 0L : Long.parseLong(parts[3]);
             return new site.kael.cpa.console.core.monitor.model.CronCertificate(
-                    task.cronExpression(), task.zoneId(), parts[0], Integer.parseInt(parts[1]),
-                    Long.parseLong(parts[2]), Instant.ofEpochMilli(Long.parseLong(parts[3])));
+                    task.cronExpression(), task.zoneId(), parts[0], algorithmVersion,
+                    Long.parseLong(parts[2]), Instant.ofEpochMilli(basePointMs),
+                    Instant.ofEpochMilli(Long.parseLong(parts[legacyFormat ? 3 : 4])));
         } catch (RuntimeException exception) {
             return null;
         }
