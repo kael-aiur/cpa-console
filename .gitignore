@@ -55,3 +55,7 @@ console-server/src/main/resources/public/
 *.key
 *.p12
 *.jks
+
+### Frontend local self-test scratch ###
+console-page/.selftest-out/
+console-page/.tsconfig.selftest.json
