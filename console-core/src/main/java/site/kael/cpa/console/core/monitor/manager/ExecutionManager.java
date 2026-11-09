@@ -122,12 +122,22 @@ public final class ExecutionManager {
      * and never re-POSTed; storage failures abort the tick before any dispatch work.
      */
     public TickSummary claimDuePlans(List<DuePlan> duePlans) throws java.sql.SQLException {
+        return claimDuePlans(duePlans, null);
+    }
+
+    /**
+     * Tick entry with the scanner's common now (T06.R3/D4.3): every claim of this tick
+     * stamps {@code claimed_at} and solves its advance strictly after the SAME instant,
+     * so a late tick never catches up over plans between the due key and the tick now.
+     */
+    public TickSummary claimDuePlans(List<DuePlan> duePlans, Long commonNowMs)
+            throws java.sql.SQLException {
         Objects.requireNonNull(duePlans, "duePlans");
         int claimedCount = 0;
         int skippedCount = 0;
         for (DuePlan plan : duePlans) {
             RunClaimManager.ClaimReceipt receipt = claimManager.claim(new RunClaimManager.ClaimRequest(
-                    plan.taskId(), plan.scheduledAt(), plan.expectedScheduleRevision()));
+                    plan.taskId(), plan.scheduledAt(), plan.expectedScheduleRevision()), commonNowMs);
             switch (receipt.outcome()) {
                 case CLAIMED -> claimedCount++;
                 case DUPLICATE_PLAN_KEY, TASK_STATE_CHANGED -> skippedCount++;
