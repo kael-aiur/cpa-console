@@ -82,8 +82,8 @@ class MonitorConsumersR2Test {
         clock = new MutableClock(Instant.parse("2026-11-01T04:00:00Z"));
         crypto = MonitorIsolationTestSupport.crypto();
         resolver = new MonitorIsolationTestSupport.FakeResolver(
-                List.of(new CpaIdentityResolver.CredentialEntry(
-                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                 List.of("model-m"));
         taskManager = new TaskManager(dataSource, crypto, clock,
                 MonitorIsolationTestSupport.cronValidator(clock), resolver::verifyBoundTarget,
@@ -623,8 +623,8 @@ class MonitorConsumersR2Test {
                     @Override
                     public java.util.List<CpaIdentityResolver.CredentialPage> listAllCredentialPages() {
                         return java.util.List.of(new CpaIdentityResolver.CredentialPage(
-                                java.util.List.of(new CpaIdentityResolver.CredentialEntry(
-                                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                                java.util.List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                                 false));
                     }
 
@@ -766,8 +766,8 @@ class MonitorConsumersR2Test {
             @Override
             public java.util.List<CpaIdentityResolver.CredentialPage> listAllCredentialPages() {
                 return java.util.List.of(new CpaIdentityResolver.CredentialPage(
-                        java.util.List.of(new CpaIdentityResolver.CredentialEntry(
-                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                        java.util.List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                         false));
             }
 

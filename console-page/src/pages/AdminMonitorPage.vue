@@ -529,7 +529,7 @@ void ADMIN_EDITABLE_FIELDS
                   :value="candidate.candidate_id"
                   :disabled="!candidate.supported"
                 >
-                  {{ candidate.provider }} · {{ candidate.sequence }}{{ candidate.supported ? '' : `（不可用：${candidate.unsupported_reason ?? '不支持'}）` }}
+                  {{ candidate.display_name }}{{ candidate.supported ? '' : `（不可用：${candidate.unsupported_reason ?? '不支持'}）` }}
                 </option>
               </select>
               <span v-if="candidateExpiryCopy" class="monitor-field-error" role="alert">{{ candidateExpiryCopy }}</span>

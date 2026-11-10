@@ -63,8 +63,8 @@ class RunClaimManagerTest {
         txManager = MonitorIsolationTestSupport.txManager(dataSource);
         clock = new MutableClock(MonitorIsolationTestSupport.BASE_TIME);
         resolver = new FakeResolver(
-                List.of(new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry(
-                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                List.of(new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail(
+                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                 List.of("model-m", "model-n"));
         crypto = MonitorIsolationTestSupport.crypto();
         taskManager = new TaskManager(dataSource, crypto, clock,

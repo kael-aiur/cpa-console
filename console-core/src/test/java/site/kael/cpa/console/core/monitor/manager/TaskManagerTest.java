@@ -44,8 +44,8 @@ class TaskManagerTest {
         jdbc = MonitorIsolationTestSupport.jdbc(dataSource);
         clock = new MutableClock(MonitorIsolationTestSupport.BASE_TIME);
         resolver = new FakeResolver(
-                List.of(new CpaIdentityResolver.CredentialEntry(
-                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                 List.of("model-m", "model-n"));
         crypto = MonitorIsolationTestSupport.crypto();
         manager = new TaskManager(dataSource, crypto, clock,
@@ -212,8 +212,8 @@ class TaskManagerTest {
         assertTrue(afterFailure.blockedReason() != null, "block must persist after failed recovery");
         assertFalse(afterFailure.enabled());
         // Restore the identity and explicitly enable: live revalidation runs (GET count grows).
-        resolver.setEntries(List.of(new CpaIdentityResolver.CredentialEntry(
-                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)));
+        resolver.setEntries(List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")));
         long callsBeforeEnable = resolver.boundTargetCalls;
         MonitorTask recovered = manager.update(created.taskId(), new UpdateRequest(
                 manager.find(created.taskId()).orElseThrow().rowVersion(), null, null, null, true));

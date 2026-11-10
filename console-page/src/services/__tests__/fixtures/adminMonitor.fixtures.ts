@@ -17,6 +17,7 @@ export const adminCandidates: AdminMonitorCandidateListResponse = {
     {
       candidate_id: 'candidate-token-a',
       sequence: '1',
+      display_name: 'team-a',
       provider: 'codex',
       supported: true,
       unsupported_reason: null,
@@ -25,6 +26,7 @@ export const adminCandidates: AdminMonitorCandidateListResponse = {
     {
       candidate_id: 'candidate-token-b',
       sequence: '2',
+      display_name: 'unknown #2',
       provider: 'claude',
       supported: false,
       unsupported_reason: 'UNSUPPORTED_PROVIDER',

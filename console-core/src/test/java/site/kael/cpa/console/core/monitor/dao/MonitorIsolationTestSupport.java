@@ -63,16 +63,16 @@ public final class MonitorIsolationTestSupport {
 
     /** Fake candidate feed standing in for the live CPA view; fully offline, zero HTTP. */
     public static final class FakeResolver {
-        private List<CpaIdentityResolver.CredentialEntry> entries;
+        private List<CpaIdentityResolver.CredentialEntryDetail> entries;
         private final List<String> modelList = new java.util.ArrayList<>();
         public int boundTargetCalls;
 
-        public FakeResolver(List<CpaIdentityResolver.CredentialEntry> entries, List<String> models) {
+        public FakeResolver(List<CpaIdentityResolver.CredentialEntryDetail> entries, List<String> models) {
             this.entries = entries;
             this.modelList.addAll(models);
         }
 
-        public void setEntries(List<CpaIdentityResolver.CredentialEntry> entries) {
+        public void setEntries(List<CpaIdentityResolver.CredentialEntryDetail> entries) {
             this.entries = entries;
         }
 
@@ -93,7 +93,7 @@ public final class MonitorIsolationTestSupport {
             }
             boolean idOnly = false;
             boolean indexOnly = false;
-            for (CpaIdentityResolver.CredentialEntry entry : entries) {
+            for (CpaIdentityResolver.CredentialEntryDetail entry : entries) {
                 boolean idMatch = authId.equals(entry.authId());
                 boolean indexMatch = authIndex.equals(entry.authIndex());
                 if (idMatch && indexMatch) {
