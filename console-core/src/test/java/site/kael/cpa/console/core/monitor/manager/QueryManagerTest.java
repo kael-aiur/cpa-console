@@ -348,6 +348,27 @@ class QueryManagerTest {
     }
 
     @Test
+    void cursorKeepsAsOfAcrossRequestsWhenTransportClockAdvances() throws Exception {
+        long shared = baseTime - 1_000;
+        for (int i = 0; i < 3; i++) {
+            insertRun("as-of-" + i, "SUCCESS", "MAY_HAVE_SENT", shared + i, shared + i - 1,
+                    shared + i, "VERIFIED");
+        }
+        QueryWindow window = QueryWindow.ofCustom(
+                Instant.ofEpochMilli(shared - 10_000).toString(),
+                Instant.ofEpochMilli(baseTime).toString());
+        EventPage pageOne = queryManager.eventsPage(task.taskId(), window, QueryManager.View.EVENTS,
+                null, 1, baseTime);
+        assertNotNull(pageOne.nextCursor());
+
+        long laterAsOf = baseTime + 60_000;
+        EventPage pageTwo = queryManager.eventsPage(task.taskId(), window, QueryManager.View.EVENTS,
+                pageOne.nextCursor(), 1, laterAsOf);
+        assertEquals(pageOne.asOfMs(), pageTwo.asOfMs());
+        assertEquals(pageOne.asOfMs(), baseTime);
+    }
+
+    @Test
     void tamperedCursorIsRejectedWithoutSilentlyRestartingPageOne() {
         SignedCursor signer = new SignedCursor("isolation-signing-secret");
         assertThrows(IllegalArgumentException.class, () -> queryManager.eventsPage(
