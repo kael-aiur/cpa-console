@@ -33,6 +33,7 @@ import {
   resolveAdminBlockedCopy,
 } from '@/utils/adminMonitorPageLogic'
 import { formatMonitorUtcTime } from '@/utils/monitorDisplay'
+import { SUPPORTED_IANA_TIME_ZONES } from '@/utils/ianaTimeZones'
 
 const tasks = ref<AdminMonitorTask[]>([])
 const candidates = ref<AdminMonitorCandidate[]>([])
@@ -534,7 +535,9 @@ void ADMIN_EDITABLE_FIELDS
             </div>
             <div class="drawer-field">
               <label for="monitor-create-zone">时区（IANA）</label>
-              <input id="monitor-create-zone" v-model="createZone" type="text" placeholder="UTC" :disabled="saving" required />
+              <select id="monitor-create-zone" v-model="createZone" :disabled="saving" required>
+                <option v-for="zone in SUPPORTED_IANA_TIME_ZONES" :key="zone" :value="zone">{{ zone }}</option>
+              </select>
               <span class="field-hint">默认 UTC；仅接受 IANA 时区 ID，不接受数字偏移。</span>
             </div>
             <div class="drawer-field">
@@ -604,7 +607,9 @@ void ADMIN_EDITABLE_FIELDS
             </div>
             <div class="drawer-field">
               <label for="monitor-edit-zone">时区（IANA）</label>
-              <input id="monitor-edit-zone" v-model="editZone" type="text" :disabled="saving" required />
+              <select id="monitor-edit-zone" v-model="editZone" :disabled="saving" required>
+                <option v-for="zone in SUPPORTED_IANA_TIME_ZONES" :key="zone" :value="zone">{{ zone }}</option>
+              </select>
               <span class="field-hint">默认 UTC；修改计划会重新校验并更新调度版本。</span>
             </div>
             <label class="monitor-enable-toggle">
