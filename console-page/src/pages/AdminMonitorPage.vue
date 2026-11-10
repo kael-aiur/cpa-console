@@ -20,6 +20,7 @@ import type {
 import {
   ADMIN_CANDIDATE_STALE_COPY,
   ADMIN_EDITABLE_FIELDS,
+  adminCandidateDisplayName,
   adminRunDisplaySummary,
   adminRunPhaseLine,
   adminRevisionState,
@@ -300,7 +301,7 @@ async function submitEdit() {
   saving.value = true
   try {
     const response = await fetchUpdateAdminMonitorTask(editingTaskId.value, {
-      expected_revision: editingTask.value.schedule_revision,
+      expected_revision: editingRowVersion.value,
       safe_name: editSafeName.value.trim(),
       cron_expression: editCron.value.trim(),
       zone_id: editZone.value.trim() || 'UTC',
@@ -546,7 +547,7 @@ void ADMIN_EDITABLE_FIELDS
                   :value="candidate.candidate_id"
                   :disabled="!candidate.supported"
                 >
-                  {{ candidate.display_name }}{{ candidate.supported ? '' : `（不可用：${candidate.unsupported_reason ?? '不支持'}）` }}
+                  {{ adminCandidateDisplayName(candidate, candidates) }}{{ candidate.supported ? '' : `（不可用：${candidate.unsupported_reason ?? '不支持'}）` }}
                 </option>
               </select>
               <span v-if="candidateExpiryCopy" class="monitor-field-error" role="alert">{{ candidateExpiryCopy }}</span>
