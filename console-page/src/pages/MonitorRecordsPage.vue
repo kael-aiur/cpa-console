@@ -268,7 +268,7 @@ function navigateToHistory(card: MonitorTaskCard) {
 
 <template>
   <section class="monitor-records-page">
-    <header class="page-heading">
+    <header class="page-heading monitor-records-heading">
       <div class="heading-copy">
         <div class="page-title-line">
           <span class="page-eyebrow">MONITOR / RECORDS</span>
@@ -280,9 +280,15 @@ function navigateToHistory(card: MonitorTaskCard) {
           <span>数据按窗口快照展示，显示时间与年龄，不代表实时健康状态</span>
         </p>
       </div>
-      <button type="button" class="refresh-action" :disabled="refreshing" @click="loadCards()">
+      <button
+        type="button"
+        class="refresh-action monitor-records-refresh"
+        :aria-busy="refreshing"
+        :disabled="refreshing"
+        @click="loadCards()"
+      >
         <svg :class="{ spinning: refreshing }" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
-        手动刷新
+        <span>{{ refreshing ? '刷新中…' : '手动刷新' }}</span>
       </button>
     </header>
 
