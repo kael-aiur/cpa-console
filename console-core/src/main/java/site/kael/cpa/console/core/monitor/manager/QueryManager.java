@@ -270,10 +270,14 @@ public final class QueryManager {
         if (cursorToken != null && payload == null) {
             throw new IllegalArgumentException("Cursor is invalid or tampered");
         }
+        // A follow-up page must reuse the snapshot boundary carried by its signed cursor.
+        // The transport clock advances between requests; comparing the cursor's as_of to a
+        // newly captured wall-clock value would reject every valid second page as
+        // SNAPSHOT_CHANGED even when the underlying data is unchanged.
+        long effectiveAsOfMs = payload == null ? asOfMs : payload.asOfMs();
         if (payload != null) {
             if (payload.dataRevision() != currentDataRevision()
                     || payload.retentionRevision() != currentRetentionRevision()
-                    || payload.asOfMs() != asOfMs
                     || payload.startMs() != window.startMs()
                     || payload.endMs() != window.endMs()
                     || !payload.view().equals(view.name())
@@ -301,13 +305,13 @@ public final class QueryManager {
         if (more && !page.isEmpty()) {
             QueryDao.EventRow last = page.get(page.size() - 1);
             nextCursor = cursorSigner.encode(new SignedCursor.Payload(
-                    taskId, last.eventAt(), last.runSeq(), limit, asOfMs,
+                    taskId, last.eventAt(), last.runSeq(), limit, effectiveAsOfMs,
                     window.startMs(), window.endMs(), view.name(),
                     currentRetentionRevision(), currentDataRevision(), "events"));
         }
         return new EventPage(taskId, List.copyOf(items), nextCursor,
-                new MonitorDataRevision(currentDataRevision()), asOfMs, window,
-                coverage(taskId, window, asOfMs), false);
+                new MonitorDataRevision(currentDataRevision()), effectiveAsOfMs, window,
+                coverage(taskId, window, effectiveAsOfMs), false);
     }
 
     /** Current shared data revision; call inside the same as_of capture. */

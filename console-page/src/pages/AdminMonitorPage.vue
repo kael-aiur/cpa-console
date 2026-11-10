@@ -20,6 +20,7 @@ import type {
 import {
   ADMIN_CANDIDATE_STALE_COPY,
   ADMIN_EDITABLE_FIELDS,
+  adminCandidateDisplayName,
   adminRunDisplaySummary,
   adminRunPhaseLine,
   adminRevisionState,
@@ -32,6 +33,7 @@ import {
   resolveAdminBlockedCopy,
 } from '@/utils/adminMonitorPageLogic'
 import { formatMonitorUtcTime } from '@/utils/monitorDisplay'
+import { getIanaTimeZonesWithCurrent, SUPPORTED_IANA_TIME_ZONES } from '@/utils/ianaTimeZones'
 
 const tasks = ref<AdminMonitorTask[]>([])
 const candidates = ref<AdminMonitorCandidate[]>([])
@@ -63,6 +65,7 @@ const editCron = ref('')
 const editZone = ref('')
 const editEnabled = ref(false)
 const editingRowVersion = ref(0)
+const editTimeZones = computed(() => getIanaTimeZonesWithCurrent(editZone.value))
 
 const historyTaskId = ref<string | null>(null)
 const historyRuns = ref<AdminMonitorRun[]>([])
@@ -300,7 +303,7 @@ async function submitEdit() {
   saving.value = true
   try {
     const response = await fetchUpdateAdminMonitorTask(editingTaskId.value, {
-      expected_revision: editingTask.value.schedule_revision,
+      expected_revision: editingRowVersion.value,
       safe_name: editSafeName.value.trim(),
       cron_expression: editCron.value.trim(),
       zone_id: editZone.value.trim() || 'UTC',
@@ -533,7 +536,9 @@ void ADMIN_EDITABLE_FIELDS
             </div>
             <div class="drawer-field">
               <label for="monitor-create-zone">时区（IANA）</label>
-              <input id="monitor-create-zone" v-model="createZone" type="text" placeholder="UTC" :disabled="saving" required />
+              <select id="monitor-create-zone" v-model="createZone" :disabled="saving" required>
+                <option v-for="zone in SUPPORTED_IANA_TIME_ZONES" :key="zone" :value="zone">{{ zone }}</option>
+              </select>
               <span class="field-hint">默认 UTC；仅接受 IANA 时区 ID，不接受数字偏移。</span>
             </div>
             <div class="drawer-field">
@@ -546,7 +551,7 @@ void ADMIN_EDITABLE_FIELDS
                   :value="candidate.candidate_id"
                   :disabled="!candidate.supported"
                 >
-                  {{ candidate.display_name }}{{ candidate.supported ? '' : `（不可用：${candidate.unsupported_reason ?? '不支持'}）` }}
+                  {{ adminCandidateDisplayName(candidate, candidates) }}{{ candidate.supported ? '' : `（不可用：${candidate.unsupported_reason ?? '不支持'}）` }}
                 </option>
               </select>
               <span v-if="candidateExpiryCopy" class="monitor-field-error" role="alert">{{ candidateExpiryCopy }}</span>
@@ -603,8 +608,10 @@ void ADMIN_EDITABLE_FIELDS
             </div>
             <div class="drawer-field">
               <label for="monitor-edit-zone">时区（IANA）</label>
-              <input id="monitor-edit-zone" v-model="editZone" type="text" :disabled="saving" required />
-              <span class="field-hint">默认 UTC；修改计划会重新校验并更新调度版本。</span>
+              <select id="monitor-edit-zone" v-model="editZone" :disabled="saving" required>
+                <option v-for="zone in editTimeZones" :key="zone" :value="zone">{{ zone }}</option>
+              </select>
+              <span class="field-hint">默认 UTC；修改计划会重新校验并更新调度版本；已有合法 ZoneId 会保留回显。</span>
             </div>
             <label class="monitor-enable-toggle">
               <input v-model="editEnabled" type="checkbox" :disabled="saving" />

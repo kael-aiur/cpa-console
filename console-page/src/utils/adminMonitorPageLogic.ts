@@ -3,7 +3,7 @@
  * thin and the acceptance rules are directly testable offline. All copy here is fixed
  * local Chinese text — it never echoes backend messages, upstream text or identifiers.
  */
-import type { AdminMonitorTask, MonitorApiError } from '@/types/monitor'
+import type { AdminMonitorCandidate, AdminMonitorTask, MonitorApiError } from '@/types/monitor'
 import type { AdminMonitorRun, MonitorDispatchStatus } from '@/types/monitor'
 import { formatMonitorUtcTime } from '@/utils/monitorDisplay'
 
@@ -32,6 +32,27 @@ export function resolveAdminBlockedCopy(reason: string | null): string {
 
 /** Local copy for a server-reported stale candidate (CANDIDATE_NOT_FOUND / CANDIDATE_EXPIRED). */
 export const ADMIN_CANDIDATE_STALE_COPY = '所选候选已过期，请重新获取候选列表后再选择'
+
+/**
+ * Render only the server-provided safe label, with a local distinguishable fallback.
+ * Candidate ids, sequence numbers and other opaque identity fields never appear in the UI.
+ */
+export function adminCandidateDisplayName(
+  candidate: Pick<AdminMonitorCandidate, 'display_name' | 'provider' | 'supported'>,
+  candidates: Array<Pick<AdminMonitorCandidate, 'display_name' | 'provider' | 'supported'>> = [],
+): string {
+  const base = candidate.display_name.trim() || candidate.provider.trim() || '受支持候选'
+  const sameLabel = candidates.filter((item) => {
+    const itemBase = item.display_name.trim() || item.provider.trim() || '受支持候选'
+    return itemBase === base
+  })
+  if (sameLabel.length <= 1) return base
+  const provider = candidate.provider.trim()
+  const providerMatches = sameLabel.filter((item) => item.provider.trim() === provider)
+  if (provider && providerMatches.length === 1) return `${base} · ${provider}`
+  const occurrence = sameLabel.indexOf(candidate) + 1
+  return `${base} · 候选项 ${occurrence}`
+}
 
 /** True only for the server-reported stale-candidate error codes; never a local age guess. */
 export function isAdminCandidateStaleError(error: Pick<MonitorApiError, 'code'>): boolean {
