@@ -27,7 +27,7 @@ import {
   monitorHistoryView,
 } from '@/utils/monitorRecordsPageLogic'
 import { formatMonitorRatio, formatMonitorUtcTime, monitorWindowSummary, formatMonitorAge } from '@/utils/monitorDisplay'
-import { SUPPORTED_IANA_TIME_ZONES } from '@/utils/ianaTimeZones'
+import { getIanaTimeZonesWithCurrent, SUPPORTED_IANA_TIME_ZONES } from '@/utils/ianaTimeZones'
 
 const NOW = 1762500000000
 const DAY = 86_400_000
@@ -286,4 +286,8 @@ console.log('monitorPages self-test OK — T13/T14 page logic asserted')
 // IANA zone selector uses the browser's supported ZoneId set and always offers UTC.
 assert.ok(SUPPORTED_IANA_TIME_ZONES.includes('UTC'))
 assert.ok(SUPPORTED_IANA_TIME_ZONES.includes('America/New_York'))
+assert.ok(SUPPORTED_IANA_TIME_ZONES.includes('US/Pacific'))
+assert.ok(SUPPORTED_IANA_TIME_ZONES.includes('Etc/GMT+5'))
+assert.equal(SUPPORTED_IANA_TIME_ZONES.length, 603)
 assert.equal(new Set(SUPPORTED_IANA_TIME_ZONES).size, SUPPORTED_IANA_TIME_ZONES.length)
+assert.ok(getIanaTimeZonesWithCurrent('Legacy/AddedByNewerTzdb').includes('Legacy/AddedByNewerTzdb'))
