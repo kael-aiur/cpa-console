@@ -39,10 +39,11 @@ export interface MonitorApiError {
   message: string
 }
 
-/** Opaque short-lived candidate id; it never encodes a real credential id/index. */
+/** Opaque short-lived candidate id; `display_name` is a safe distinguishable admin label. */
 export interface AdminMonitorCandidate {
   candidate_id: string
   sequence: string
+  display_name: string
   provider: string
   supported: boolean
   unsupported_reason: string | null

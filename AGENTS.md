@@ -61,3 +61,15 @@ Do not commit `.env`, credentials, target artifacts, or generated public assets 
 涉及数据库结构或数据变更的新功能，必须先阅读并遵循 [`docs/database-migrations.md`](docs/database-migrations.md) 中的数据库平滑升级方案。
 
 所有数据库变更必须通过版本化、只追加的迁移脚本完成，不得直接修改已经发布或已经执行过的初始化 SQL、schema SQL 或历史迁移文件。实现时必须考虑已有数据库升级、迁移失败回滚、重复启动、checksum 校验和必要的迁移测试。
+
+## 本项目部署指引（知识库入口）
+
+- 项目 / 代码仓库：乌蝇哥-mac（cpa-console）；规范化仓库 `kael-aiur/cpa-console`，入口 `git@github.com:kael-aiur/cpa-console.git`。
+- 环境 / 发布方式：itx 内网服务器（Ubuntu，`192.168.2.16`，用户 `kael`）Docker Compose；发布流程为 develop→PR合main→等待Actions构建→itx拉精确tag升级（多环境映射见知识页）。
+- 知识库服务 / wiki：LLMWikiNG，wiki `main`。
+- 指引标题 / 页面slug或ID：方法母页《cpa-console 发布与 itx 部署流程（PR → Actions → 镜像 → 升级）》`cpa-console-itx-release-deployment`；执行记录《cpa-console NATI-167 监控功能 itx 生产部署执行（842e90c）》`cpa-console-nati-167-itx-deployment-execution`。
+- 搜索关键词：`cpa-console` `itx` `部署` `842e90c` `NATI-167`。
+- 搜索并完整读取：`okf_search(query="cpa-console NATI-167", wiki="main")` → `okf_read_concept(slug="cpa-console-nati-167-itx-deployment-execution", wiki="main")`；方法母页 `okf_read_concept(slug="cpa-console-itx-release-deployment", wiki="main")`。
+- 最近核验：2026-11-10；已验证 main=`842e90c9ddd9bbb0ec2cadc10972012adf1c9cf5`，镜像 `kael2018/cpa-console:842e90c`（revision label 精确对应）；来源 Issue NATI-167/NATI-168。
+- 维护责任：部署运维每次部署记录新坑和方法变化并回写对应指引；项目经理核验。索引变更同步维护本节。
+- 执行前核对：仓库/环境/版本适用性、本次授权、前置与成功/失败/回退边界；文档不是生产批准。无法检索或不知道如何部署时，由部署运维在当前部署Issue下派人工方法补充并保留父目标等待；核验答复后继续。

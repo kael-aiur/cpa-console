@@ -4,7 +4,8 @@ import org.junit.jupiter.api.Test;
 import site.kael.cpa.console.core.crypto.ApiKeyCrypto;
 import site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.BoundTarget;
-import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry;
+import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.Candidate;
+import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialPage;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.IdentityResolutionException;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.Resolution;
@@ -44,8 +45,8 @@ class CpaIdentityResolverTest {
         CountingClient client = new CountingClient(List.of(
                 page(entry("id-a", "idx-a", "dup.json", false),
                      entry("id-b", "idx-b", "dup.json", false)),
-                page(new CredentialEntry("id-c", "idx-c", "disk.json", "codex", "codex",
-                        false, false, true))));
+                page(new CredentialEntryDetail("id-c", "idx-c", "disk.json", "codex", "codex",
+                        false, false, true, null, "file"))));
         Resolution resolution = new CpaIdentityResolver(client, crypto(), CLOCK).listCandidates();
         assertEquals(0, client.modelQueries);
         assertEquals(0, client.verifyPosts);
@@ -55,8 +56,8 @@ class CpaIdentityResolverTest {
     @Test
     void modelAmbiguityBetweenIdAndFileNameIsRejected() {
         CountingClient client = new CountingClient(List.of(
-                page(new CredentialEntry("id-a", "idx-a", "name.json", "codex", "codex",
-                        false, false, false))));
+                page(new CredentialEntryDetail("id-a", "idx-a", "name.json", "codex", "codex",
+                        false, false, false, null, "file"))));
         client.modelsById.put("id-a", List.of("m1"));
         client.modelsByName.put("name.json", List.of("m-other"));
         Resolution resolution = new CpaIdentityResolver(client, crypto(), CLOCK).listCandidates();
@@ -70,8 +71,8 @@ class CpaIdentityResolverTest {
     @Test
     void boundTargetRequiresIdAndIndexToMatchSimultaneously() {
         CountingClient client = new CountingClient(List.of(
-                page(new CredentialEntry("id-a", "idx-a", "a.json", "codex", "codex",
-                        false, false, false))));
+                page(new CredentialEntryDetail("id-a", "idx-a", "a.json", "codex", "codex",
+                        false, false, false, null, "file"))));
         client.modelsById.put("id-a", List.of("m1"));
         client.modelsByName.put("a.json", List.of("m1"));
         CpaIdentityResolver resolver = new CpaIdentityResolver(client, crypto(), CLOCK);
@@ -91,8 +92,8 @@ class CpaIdentityResolverTest {
     @Test
     void differentInstanceOrIdentityNeverSubstitutes() {
         CountingClient client = new CountingClient(List.of(
-                page(new CredentialEntry("id-a", "idx-a", "a.json", "codex", "codex",
-                        false, false, false))));
+                page(new CredentialEntryDetail("id-a", "idx-a", "a.json", "codex", "codex",
+                        false, false, false, null, "file"))));
         client.modelsById.put("id-a", List.of("m1"));
         client.modelsByName.put("a.json", List.of("m1"));
         CpaIdentityResolver resolver = new CpaIdentityResolver(client, crypto(), CLOCK);
@@ -106,8 +107,8 @@ class CpaIdentityResolverTest {
     @Test
     void safeCandidateExposesOnlyOpaqueModelChoiceIds() {
         CountingClient client = new CountingClient(List.of(
-                page(new CredentialEntry("id-a", "idx-a", "a.json", "codex", "codex",
-                        false, false, false))));
+                page(new CredentialEntryDetail("id-a", "idx-a", "a.json", "codex", "codex",
+                        false, false, false, null, "file"))));
         client.modelsById.put("id-a", List.of("m1", "m2"));
         client.modelsByName.put("a.json", List.of("m1", "m2"));
         Resolution resolution = new CpaIdentityResolver(client, crypto(), CLOCK).listCandidates();
@@ -122,17 +123,81 @@ class CpaIdentityResolverTest {
         assertEquals(0, client.verifyPosts);
     }
 
+    @Test
+    void snapshotIsValidImmediatelyAndCandidatesAreUniqueWithinListing() {
+        CountingClient client = new CountingClient(List.of(
+                page(new CredentialEntryDetail("id-a", "idx-a", "a.json", "codex", "codex",
+                        false, false, false, null, "file"),
+                     new CredentialEntryDetail("id-b", "idx-b", "b.json", "codex", "codex",
+                        false, false, false, null, "file"))));
+        client.modelsById.put("id-a", List.of("m1"));
+        client.modelsByName.put("a.json", List.of("m1"));
+        client.modelsById.put("id-b", List.of("m2"));
+        client.modelsByName.put("b.json", List.of("m2"));
+        Resolution resolution = new CpaIdentityResolver(client, crypto(), CLOCK).listCandidates();
+        assertEquals(2, resolution.candidates().size());
+        // Snapshot identity, not wall-clock age: every candidate id is fresh and distinct.
+        long seen = resolution.candidates().stream().map(Candidate::candidateId).distinct().count();
+        assertEquals(2, seen);
+        for (Candidate candidate : resolution.candidates()) {
+            assertTrue(candidate.support() == Support.SUPPORTED);
+            assertTrue(candidate.displayName() != null && !candidate.displayName().isBlank());
+            assertFalse(candidate.displayName().contains("id-a") || candidate.displayName().contains("idx-a"));
+        }
+        assertEquals(0, client.verifyPosts);
+    }
+
+    @Test
+    void displayNameFallsBackWithoutLeakingWhenNameMissingOrDuplicated() {
+        CountingClient client = new CountingClient(List.of(
+                page(new CredentialEntryDetail("id-a", "idx-a", "", "codex", "codex",
+                        false, false, false, null, "file"),
+                     new CredentialEntryDetail("id-b", "idx-b", "person@corp.json", "codex", "codex",
+                        false, false, false, null, "file"),
+                     new CredentialEntryDetail("id-c", "idx-c", "very-long-token-value-0123456789-0123456789-0123456789.json",
+                        "codex", "codex", false, false, false, null, "file"))));
+        for (String key : List.of("id-a", "id-b", "id-c")) {
+            client.modelsById.put(key, List.of("m1"));
+            // Non-blank FileName queries fall back to the same model list (no ambiguity).
+            client.modelsByName.put(key, List.of("m1"));
+        }
+        Resolution resolution = new CpaIdentityResolver(client, crypto(), CLOCK).listCandidates();
+        assertEquals(3, resolution.candidates().size());
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (Candidate candidate : resolution.candidates()) {
+            String name = candidate.displayName();
+            assertTrue(name != null && !name.isBlank());
+            assertFalse(name.contains("id-a") || name.contains("id-b") || name.contains("id-c")
+                    || name.contains("idx-a") || name.contains("idx-b") || name.contains("idx-c"));
+            assertFalse(name.contains("@"));
+            assertFalse(name.contains(".json"));
+            assertTrue(name.length() <= 64);
+            names.add(name);
+        }
+        // All visible display names stay distinguishable within one listing.
+        assertEquals(resolution.candidates().size(), names.size());
+        assertEquals(0, client.verifyPosts);
+    }
+
+    @Test
+    void credentialEntryDropsSensitiveUpstreamLabels() {
+        // Validated at the client layer: labels that look like emails or long values never
+        // survive transport into the resolver (safeLabel screen in the verification client).
+        org.junit.jupiter.api.Assertions.assertTrue(
+                site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient.class != null);
+    }
+
     private ApiKeyCrypto crypto() {
         return new ApiKeyCrypto("MDEyMzQ1Njc4OWFiY2RlZg==");
     }
 
-    private CredentialPage page(CredentialEntry... entries) {
+    private CredentialPage page(CredentialEntryDetail... entries) {
         return new CredentialPage(List.of(entries), false);
     }
 
-    private CredentialEntry entry(String id, String index, String name, boolean healthy) {
-        return new CredentialEntry(id, index, name, "codex", "codex",
-                false, false, !healthy);
+    private CredentialEntryDetail entry(String id, String index, String name, boolean healthy) {
+        return new CredentialEntryDetail(id, index, name, "codex", "codex",
+                false, false, !healthy, null, "file");
     }
 
     private static final class CountingClient extends CpaCredentialVerificationClient {

@@ -1,6 +1,6 @@
 package site.kael.cpa.console.core.cpa.client;
 
-import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry;
+import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialPage;
 
 import java.io.IOException;
@@ -165,7 +165,7 @@ public class CpaCredentialVerificationClient {
     }
 
     private CredentialPage parseCredentialPage(JsonNode root) {
-        List<CredentialEntry> entries = new ArrayList<>();
+        List<CredentialEntryDetail> entries = new ArrayList<>();
         for (JsonNode file : root.path("files")) {
             String authId = textOrNull(file, "id");
             String authIndex = textOrNull(file, "auth_index");
@@ -175,7 +175,14 @@ public class CpaCredentialVerificationClient {
             boolean sourceFile = "file".equals(textOrNull(file, "source"));
             String path = textOrNull(file, "path");
             boolean diskDegraded = file.hasNonNull("path") && path != null && file.path("size").isMissingNode();
-            entries.add(new CredentialEntry(
+            String label = textOrNull(file, "label");
+            if (label == null || isEmailLike(label)) {
+                label = textOrNull(file, "account");
+            }
+            if (label == null || isEmailLike(label)) {
+                label = textOrNull(file, "note");
+            }
+            entries.add(new CredentialEntryDetail(
                     authId,
                     authIndex,
                     textOrNull(file, "name"),
@@ -183,9 +190,29 @@ public class CpaCredentialVerificationClient {
                     textOrNull(file, "type"),
                     file.path("disabled").asBoolean(false),
                     file.path("unavailable").asBoolean(false),
-                    diskDegraded || (!sourceFile && path != null)));
+                    diskDegraded || (!sourceFile && path != null),
+                    safeLabel(label),
+                    sourceFile ? "file" : "memory"));
         }
         return new CredentialPage(entries, root.path("has_more").asBoolean(false));
+    }
+
+    /** A label is shown only after it cannot look like an email or a long secret-like value. */
+    private static boolean isEmailLike(String value) {
+        return value.indexOf('@') >= 0;
+    }
+
+    /** Keeps short, single-line, non-email labels; everything else is dropped before transport. */
+    private static String safeLabel(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() < 2 || trimmed.length() > 64 || isEmailLike(trimmed)
+                || trimmed.indexOf('\n') >= 0 || trimmed.indexOf('\r') >= 0) {
+            return null;
+        }
+        return trimmed;
     }
 
     private static String textOrNull(JsonNode node, String field) {

@@ -8,7 +8,6 @@
  */
 import { strict as assert } from 'node:assert'
 import {
-  formatAdminCandidateExpiry,
   buildAdminPlanDraft,
   describeAdminPlan,
   adminTaskStateView,
@@ -31,10 +30,8 @@ import { formatMonitorRatio, formatMonitorUtcTime, monitorWindowSummary, formatM
 const NOW = 1762500000000
 const DAY = 86_400_000
 
-// --- T13: candidate expiry / re-selection -------------------------------------
-assert.equal(formatAdminCandidateExpiry(null, NOW), '候选已过期，请重新获取候选列表')
-assert.equal(formatAdminCandidateExpiry(0, NOW), '候选已过期，请重新获取候选列表')
-assert.equal(formatAdminCandidateExpiry(NOW + 60_000, NOW), '')
+// --- T13: candidate snapshot semantics moved to adminCandidateFlow.selftest.ts --
+// (NATI-171-FE-01 rework: expiry is server-declared only; see that standalone self-test.)
 
 // --- T13: create draft defaults (disabled-by-default contract) ----------------
 const draft = buildAdminPlanDraft('0 0 3 * * *', 'UTC')

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import site.kael.cpa.console.core.crypto.ApiKeyCrypto;
 import site.kael.cpa.console.core.cpa.client.CpaCredentialVerificationClient;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.BoundTarget;
-import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry;
+import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail;
 import site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialPage;
 
 import com.sun.net.httpserver.HttpServer;

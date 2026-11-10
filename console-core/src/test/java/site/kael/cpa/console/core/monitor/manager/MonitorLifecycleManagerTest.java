@@ -115,8 +115,8 @@ class MonitorLifecycleManagerTest {
                 return java.util.List.of(
                         new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialPage(
                                 java.util.List.of(
-                                        new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry(
-                                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                                        new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail(
+                                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                                 false));
             }
 

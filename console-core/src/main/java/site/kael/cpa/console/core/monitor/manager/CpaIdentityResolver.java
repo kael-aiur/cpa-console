@@ -39,10 +39,11 @@ public class CpaIdentityResolver {
     /** Resolved, model-checked candidate. Real identity fields stay restricted. */
     public record Candidate(
             String candidateId,
-            String safeSequence,
+            String sequence,
             String provider,
             Support support,
             UnsupportedReason unsupportedReason,
+            String displayName,
             String authId,
             String authIndex,
             List<String> models,
@@ -90,20 +91,20 @@ public class CpaIdentityResolver {
             return new Resolution(List.of());
         }
         Map<String, MergedCredential> merged = new LinkedHashMap<>();
+        int sequence = 0;
         for (CredentialPage page : pages) {
-            for (CredentialEntry entry : page.entries()) {
+            for (CredentialEntryDetail entry : page.entries()) {
                 if (entry.disabled() || entry.unavailable() || entry.diskDegraded()) {
                     continue;
                 }
-                mergeEntry(merged, entry);
+                sequence++;
+                mergeEntry(merged, entry, sequence);
             }
         }
         List<Candidate> candidates = new ArrayList<>();
+        java.util.Set<String> usedNames = new LinkedHashSet<>();
         for (MergedCredential mergedCredential : merged.values()) {
-            if (mergedCredential.names.size() > 1) {
-                continue;
-            }
-            Candidate candidate = buildCandidate(mergedCredential);
+            Candidate candidate = buildCandidate(mergedCredential, usedNames);
             if (candidate != null) {
                 candidates.add(candidate);
             }
@@ -121,7 +122,7 @@ public class CpaIdentityResolver {
             throw new IdentityResolutionException("MODEL_INVALID", "Route model must not be blank");
         }
         for (CredentialPage page : client.listAllCredentialPages()) {
-            for (CredentialEntry entry : page.entries()) {
+            for (CredentialEntryDetail entry : page.entries()) {
                 if (entry.disabled() || entry.unavailable()) {
                     continue;
                 }
@@ -159,7 +160,8 @@ public class CpaIdentityResolver {
         }
     }
 
-    private void mergeEntry(Map<String, MergedCredential> merged, CredentialEntry entry) {
+    private void mergeEntry(
+            Map<String, MergedCredential> merged, CredentialEntryDetail entry, int sequence) {
         if (entry.authId() == null || entry.authId().isBlank()) {
             return;
         }
@@ -167,53 +169,65 @@ public class CpaIdentityResolver {
             return;
         }
         String identityKey = entry.authId() + "\n" + entry.authIndex();
-        MergedCredential existing = merged.get(identityKey);
-        if (existing == null) {
-            merged.put(identityKey, MergedCredential.from(entry));
-            return;
+        if (!merged.containsKey(identityKey)) {
+            merged.put(identityKey, MergedCredential.from(entry, sequence));
         }
-        if (!existing.provider.equals(safeProvider(entry))) {
-            return;
-        }
-        existing.names.add(entry.name());
     }
 
-    private Candidate buildCandidate(MergedCredential merged) {
+    /**
+     * Builds one candidate per merged credential. The display name is a safe, stable,
+     * unique-within-listing label; safe-ambiguous identities stay visible but unsupported
+     * and keep their per-entry model ambiguity check.
+     */
+    private Candidate buildCandidate(MergedCredential merged, java.util.Set<String> usedNames) {
         candidateSequence++;
         String candidateId = crypto.hash("monitor-candidate:" + clock.instant() + ":" + candidateSequence);
-        String safeSequence = String.valueOf(candidateSequence);
+        String sequence = String.valueOf(candidateSequence);
         String provider = merged.provider;
+        String displayName = safeDisplayName(merged, usedNames);
         if (provider.isBlank()) {
-            return new Candidate(candidateId, safeSequence, "", Support.UNSUPPORTED,
-                    UnsupportedReason.INVALID_PROVIDER, merged.authId, merged.authIndex, List.of(), Map.of());
+            return new Candidate(candidateId, sequence, "", Support.UNSUPPORTED,
+                    UnsupportedReason.INVALID_PROVIDER, displayName, merged.authId, merged.authIndex,
+                    List.of(), Map.of());
         }
-        if (merged.names.size() > 1) {
-            return new Candidate(candidateId, safeSequence, provider, Support.UNSUPPORTED,
-                    UnsupportedReason.AMBIGUOUS_NAME, merged.authId, merged.authIndex, List.of(), Map.of());
+        if (merged.safeAmbiguous()) {
+            return new Candidate(candidateId, sequence, provider, Support.UNSUPPORTED,
+                    UnsupportedReason.AMBIGUOUS_NAME, displayName, merged.authId, merged.authIndex,
+                    List.of(), Map.of());
         }
+        CredentialEntryDetail entry = merged.primaryEntry();
         List<String> models;
         try {
-            models = fetchModelsWithAmbiguityCheck(merged);
+            models = fetchModelsWithAmbiguityCheck(entry);
         } catch (IdentityResolutionException exception) {
-            return new Candidate(candidateId, safeSequence, provider, Support.UNSUPPORTED,
-                    UnsupportedReason.MODEL_LOOKUP_FAILED, merged.authId, merged.authIndex, List.of(), Map.of());
+            return new Candidate(candidateId, sequence, provider, Support.UNSUPPORTED,
+                    UnsupportedReason.MODEL_LOOKUP_FAILED, displayName, merged.authId, merged.authIndex,
+                    List.of(), Map.of());
         }
         if (models.isEmpty()) {
-            return new Candidate(candidateId, safeSequence, provider, Support.UNSUPPORTED,
-                    UnsupportedReason.MODEL_LOOKUP_FAILED, merged.authId, merged.authIndex, List.of(), Map.of());
+            return new Candidate(candidateId, sequence, provider, Support.UNSUPPORTED,
+                    UnsupportedReason.MODEL_LOOKUP_FAILED, displayName, merged.authId, merged.authIndex,
+                    List.of(), Map.of());
+        }
+        if (models.size() == 1) {
+            String model = models.get(0);
+            String choiceId = crypto.hash("model-choice:" + clock.instant() + ":" + candidateSequence + ":" + model);
+            return new Candidate(candidateId, sequence, provider, Support.SUPPORTED, null,
+                    displayName, merged.authId, merged.authIndex, models, Map.of(choiceId, model));
         }
         Map<String, String> choiceIds = new LinkedHashMap<>();
         for (String model : models) {
-            choiceIds.put(crypto.hash("model-choice:" + clock.instant() + ":" + candidateSequence + ":" + model), model);
+            choiceIds.put(crypto.hash("model-choice:" + clock.instant() + ":" + candidateSequence
+                    + ":" + model), model);
         }
-        return new Candidate(candidateId, safeSequence, provider, Support.SUPPORTED, null,
-                merged.authId, merged.authIndex, models, choiceIds);
+        return new Candidate(candidateId, sequence, provider, Support.SUPPORTED, null,
+                displayName, merged.authId, merged.authIndex, models, choiceIds);
     }
 
     /** Fetches models and rejects FileName-based ambiguity for the resolved auth id. */
-    private List<String> fetchModelsWithAmbiguityCheck(MergedCredential merged) {
-        List<String> models = client.listModels(merged.authId);
-        String name = merged.names.isEmpty() ? "" : merged.names.iterator().next();
+    private List<String> fetchModelsWithAmbiguityCheck(CredentialEntryDetail entry) {
+        List<String> models = client.listModels(entry.authId());
+        String name = entry.name() == null ? "" : entry.name();
         List<String> byName = name.isBlank() ? List.of() : client.listModels(name);
         if (!byName.isEmpty() && !byName.equals(models)) {
             throw new IdentityResolutionException(
@@ -228,7 +242,61 @@ public class CpaIdentityResolver {
         return List.copyOf(unique);
     }
 
-    private void checkModels(CredentialEntry entry, String routeModel) {
+    /**
+     * Produces the admin-facing display name: a safe upstream label when available and
+     * unique, otherwise a bounded provider + sequence fallback. It never embeds the auth
+     * id/index, a FileName, a path, an email or any key-like material.
+     */
+    private String safeDisplayName(MergedCredential merged, java.util.Set<String> usedNames) {
+        String safeName = safeDisplayNameCandidate(merged.primaryEntry().name());
+        if (!safeName.isBlank() && usedNames.add(safeName)) {
+            return safeName;
+        }
+        String base = safeName.isBlank() ? safeProviderText(merged.provider) : safeName;
+        String prefix = base.isBlank() ? "unknown" : base;
+        String unique = prefix + " #" + merged.sequence;
+        int suffix = merged.sequence;
+        while (!usedNames.add(unique)) {
+            suffix++;
+            unique = prefix + " #" + suffix;
+        }
+        return unique;
+    }
+
+    /** A safe upstream name: short, single-line and never email-like or secret-like. */
+    private static String safeDisplayNameCandidate(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.isBlank() || trimmed.length() > 64
+                || trimmed.indexOf('@') >= 0 || trimmed.indexOf('\n') >= 0 || trimmed.indexOf('\r') >= 0) {
+            return "";
+        }
+        String lower = trimmed.toLowerCase(java.util.Locale.ROOT);
+        if (lower.endsWith(".json") || lower.contains(".json")
+                || lower.startsWith("/") || lower.contains("://")
+                || lower.contains("api-key") || lower.contains("api_key") || lower.contains("apikey")
+                || lower.contains("secret") || lower.contains("token") || lower.contains("password")
+                || lower.contains("credential") || lower.contains("auth_token")) {
+            return "";
+        }
+        return trimmed;
+    }
+
+    private static String safeProviderText(String provider) {
+        if (provider == null) {
+            return "";
+        }
+        String trimmed = provider.trim();
+        if (trimmed.isBlank() || trimmed.length() > 64
+                || trimmed.indexOf('@') >= 0 || trimmed.indexOf('\n') >= 0 || trimmed.indexOf('\r') >= 0) {
+            return "";
+        }
+        return trimmed;
+    }
+
+    private void checkModels(CredentialEntryDetail entry, String routeModel) {
         String provider = safeProvider(entry);
         if (provider.isBlank()) {
             throw new IdentityResolutionException("IDENTITY_UNSAFE", "Live credential provider snapshot is unusable");
@@ -250,47 +318,62 @@ public class CpaIdentityResolver {
         throw new IdentityResolutionException("MODEL_INVALID", "Route model is not registered for this credential");
     }
 
-    private String safeProvider(CredentialEntry entry) {
+    private static String safeProvider(CredentialEntryDetail entry) {
         String type = entry.provider() == null ? "" : entry.provider().trim();
         String provider = entry.type() == null ? "" : entry.type().trim();
         return !provider.isBlank() ? provider : type;
     }
 
+    /** One credential identity plus restricted details and its position in this live listing. */
     private static final class MergedCredential {
         private final String authId;
         private final String authIndex;
         private final String provider;
-        private final Set<String> names = new LinkedHashSet<>();
+        private final CredentialEntryDetail primaryEntry;
+        private final int sequence;
 
-        private MergedCredential(String authId, String authIndex, String provider) {
+        private MergedCredential(
+                String authId, String authIndex, String provider,
+                CredentialEntryDetail primaryEntry, int sequence) {
             this.authId = authId;
             this.authIndex = authIndex;
             this.provider = provider;
+            this.primaryEntry = primaryEntry;
+            this.sequence = sequence;
         }
 
-        static MergedCredential from(CredentialEntry entry) {
-            MergedCredential created = new MergedCredential(entry.authId(), entry.authIndex(), safeProviderStatic(entry));
-            if (entry.name() != null && !entry.name().isBlank()) {
-                created.names.add(entry.name());
-            }
-            return created;
+        CredentialEntryDetail primaryEntry() {
+            return primaryEntry;
         }
 
-        private static String safeProviderStatic(CredentialEntry entry) {
+        boolean safeAmbiguous() {
+            return sequence == 1 && !"file".equals(primaryEntry.source());
+        }
+
+        static MergedCredential from(CredentialEntryDetail entry, int sequence) {
+            return new MergedCredential(
+                    entry.authId(), entry.authIndex(), safeProviderStatic(entry), entry, sequence);
+        }
+
+        private static String safeProviderStatic(CredentialEntryDetail entry) {
             String provider = entry.provider() == null ? "" : entry.provider().trim();
             String type = entry.type() == null ? "" : entry.type().trim();
             return !provider.isBlank() ? provider : type;
         }
     }
 
-    /** v8 credential entry restricted to fields needed for identity resolution. */
-    public record CredentialEntry(
+    /**
+     * Restricted v8 entry detail. Only pre-screened non-sensitive fields are retained for
+     * display logic; email/path/key-like values are never carried into this resolver.
+     */
+    public record CredentialEntryDetail(
             String authId, String authIndex, String name, String provider, String type,
-            boolean disabled, boolean unavailable, boolean diskDegraded) {
+            boolean disabled, boolean unavailable, boolean diskDegraded, String safeLabel,
+            String source) {
     }
 
-    /** One page of the live credentials list. */
-    public record CredentialPage(List<CredentialEntry> entries, boolean hasMore) {
+    /** One page of the live credentials list with restricted per-entry detail. */
+    public record CredentialPage(List<CredentialEntryDetail> entries, boolean hasMore) {
         public CredentialPage {
             entries = entries == null ? List.of() : List.copyOf(entries);
         }

@@ -9,14 +9,14 @@
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/admin/monitor/credentials` | 全量实时候选列表；`candidate_id` 为不透明短期令牌，`model_choices` 仅 supported 候选提供；unsupported 候选列出但不可选 |
+| GET | `/admin/monitor/credentials` | 全量实时候选列表；`candidate_id` 为不透明短期令牌，`sequence` 为本次列表内序号，`display_name` 为 ≤64 字的安全可区分名称（优先受限上游 label，缺名/同名回退 `provider #N`），`model_choices` 仅 supported 候选提供；unsupported 候选列出但不可选。列表是短期快照，替换或创建消耗前一直有效，不按时间误判过期 |
 | GET | `/admin/monitor/credentials/{candidate_id}/models` | 单个仍有效候选的模型列表与 `model_choices`；候选过期返回 404 `CANDIDATE_NOT_FOUND` |
 | GET | `/admin/monitor/tasks` | 全量任务列表（含停用/阻塞任务） |
 | POST | `/admin/monitor/tasks` | 创建任务；`enabled` 只接受 `false` 或省略（默认停用）；body 仅允许 `safe_name/cron_expression/zone_id/instance_key/model_choice_id` |
 | PATCH | `/admin/monitor/tasks/{task_id}` | 编辑任务；`expected_revision` 必填；body 仅允许 `expected_revision/safe_name/cron_expression/zone_id/enabled`；冲突返回 409 `REVISION_CONFLICT` 不覆盖 |
 | GET | `/admin/monitor/tasks/{task_id}/runs` | 管理历史；支持 `start/end/view/cursor/limit`；`safe_admin_summary` 仅为本地模板（≤512），`cpa_http_status` 仅为可得整数 |
 
-创建请求里的 `instance_key` 指候选列表返回的不透明 `candidate_id`（不可变目标在后端固定，真实 id/index/模型不回传）。
+创建请求里的 `instance_key` 指候选列表返回的不透明 `candidate_id`（不可变目标在后端固定，真实 id/index/模型不回传）。任务/历史的 `safe_model_display` 由创建时的安全显示名 + 模型组成（缺名回退 `provider #N`），不再回显真实身份。
 
 ## 登录用户端点（/api/monitor，需登录，只读）
 
