@@ -87,23 +87,28 @@ function hasDecl(rule: string, prop: string, value: string): boolean {
   return re.test(rule)
 }
 
-// column flexbox: the button is always the next full slot after the copy — no horizontal
-// squeeze and nothing can overlap it from a sibling line.
+// Desktop keeps the action in the heading's right-side slot like QuotaPage; the narrow
+// media query gives it a dedicated full-width row so neither layout can overlap.
 const headingRule = ruleFor('.monitor-records-page .page-heading.monitor-records-heading')
-assert.ok(hasDecl(headingRule, 'flex-direction', 'column'), 'heading must stack copy and button vertically')
-assert.ok(hasDecl(headingRule, 'align-items', 'stretch'), 'heading children must own the full row width')
-assert.ok(hasDecl(headingRule, 'gap', '12px'), 'copy and button need their own gap slot')
+assert.ok(hasDecl(headingRule, 'flex-direction', 'row'), 'desktop heading keeps refresh action in the right-side slot')
+assert.ok(hasDecl(headingRule, 'align-items', 'flex-end'), 'desktop heading aligns action with the heading copy')
+assert.ok(hasDecl(headingRule, 'flex-wrap', 'nowrap'), 'desktop heading must not wrap the action under long copy')
+assert.ok(hasDecl(headingRule, 'gap', '16px 24px'), 'copy and button use the shared page-heading gap')
 assert.ok(hasDecl(headingRule, 'margin-bottom', '2px'), 'heading must not rely on following siblings for spacing')
 
 const refreshRule = ruleFor('.monitor-records-page .monitor-records-refresh')
 assert.ok(hasDecl(refreshRule, 'flex-shrink', '0'), 'the refresh slot must never be squeezed')
 assert.ok(hasDecl(refreshRule, 'min-height', '44px'), 'touch target stays at least 44px tall')
-assert.ok(hasDecl(refreshRule, 'min-width', '0'), 'long labels wrap inside the slot instead of pushing layout')
+assert.ok(hasDecl(refreshRule, 'min-width', '112px'), 'refresh action keeps a usable desktop width')
+assert.match(refreshRule, /max-width\s*:\s*min\(180px, 100%\)/, 'long labels stay inside a bounded action slot')
 
 const spanRule = ruleFor('.monitor-records-page .monitor-records-refresh > span')
 assert.ok(hasDecl(spanRule, 'white-space', 'normal'), 'long state labels wrap instead of clipping the button')
 assert.ok(hasDecl(spanRule, 'overflow-wrap', 'anywhere'), 'even unbreakable CJK+ascii mixes wrap inside the slot')
 
+const narrowHeadingRule = ruleFor('.monitor-records-page .page-heading.monitor-records-heading', globalCss.indexOf('@media (max-width: 620px)'))
+assert.ok(hasDecl(narrowHeadingRule, 'flex-direction', 'column'), 'narrow viewports stack heading copy and action')
+assert.ok(hasDecl(narrowHeadingRule, 'align-items', 'stretch'), 'narrow heading children own the full row width')
 const narrowRule = ruleFor('.monitor-records-page .monitor-records-refresh', globalCss.indexOf('@media (max-width: 620px)'))
 assert.ok(hasDecl(narrowRule, 'width', '100%'), 'narrow viewports give the refresh action its own full-width row')
 
