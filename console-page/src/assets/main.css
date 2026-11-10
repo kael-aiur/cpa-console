@@ -1085,8 +1085,16 @@ button {
 }
 
 @media (max-width: 620px) {
+  .monitor-records-page .page-heading.monitor-records-heading {
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
   .monitor-records-page .monitor-records-refresh {
     width: 100%;
+    max-width: none;
   }
 
   .hero-copy h1 {
@@ -1293,27 +1301,40 @@ button {
   animation: quota-spin 800ms linear infinite;
 }
 
-/* 监控记录页：按钮从页面流的第一行开始，标题/错误文案换行不挤压它；触控命中区高于 44px。 */
+/* 监控记录页沿用额度查看页的右上角操作位；按钮不参与标题文案的收缩。 */
 .monitor-records-page .page-heading.monitor-records-heading {
-  align-items: stretch;
-  flex-direction: column;
-  gap: 12px;
+  align-items: flex-end;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 16px 24px;
   margin-bottom: 2px;
 }
 
+.monitor-records-page .monitor-records-heading .heading-copy {
+  flex: 1 1 auto;
+}
+
 .monitor-records-page .monitor-records-refresh {
+  flex: 0 0 auto;
   flex-shrink: 0;
   justify-content: center;
-  min-width: 0;
+  min-width: 112px;
   min-height: 44px;
+  max-width: min(180px, 100%);
   overflow: hidden;
 }
 
 .monitor-records-page .monitor-records-refresh > span {
+  min-width: 0;
   overflow: hidden;
   overflow-wrap: anywhere;
   text-overflow: ellipsis;
   white-space: normal;
+}
+
+.monitor-records-page .monitor-records-refresh:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--success-color) 58%, transparent);
+  outline-offset: 3px;
 }
 
 .tabs-row {
