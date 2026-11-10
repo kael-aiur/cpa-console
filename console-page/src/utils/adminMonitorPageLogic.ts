@@ -30,12 +30,12 @@ export function resolveAdminBlockedCopy(reason: string | null): string {
   return ADMIN_BLOCKED_COPY[reason] ?? '配置阻塞：请刷新后重新校验启用'
 }
 
-/** A candidate listing is a live snapshot; any stale selection must be re-listed. */
-export function formatAdminCandidateExpiry(candidateTimestamp: number | null, nowMs: number): string {
-  if (candidateTimestamp === null || candidateTimestamp <= 0 || candidateTimestamp <= nowMs) {
-    return '候选已过期，请重新获取候选列表'
-  }
-  return ''
+/** Local copy for a server-reported stale candidate (CANDIDATE_NOT_FOUND / CANDIDATE_EXPIRED). */
+export const ADMIN_CANDIDATE_STALE_COPY = '所选候选已过期，请重新获取候选列表后再选择'
+
+/** True only for the server-reported stale-candidate error codes; never a local age guess. */
+export function isAdminCandidateStaleError(error: Pick<MonitorApiError, 'code'>): boolean {
+  return error.code === 'CANDIDATE_NOT_FOUND' || error.code === 'CANDIDATE_EXPIRED'
 }
 
 /** Strict six-field cron shape check — local pre-check only, never a full-domain proof. */
@@ -90,7 +90,7 @@ export const ADMIN_EDITABLE_FIELDS = ['safe_name', 'cron_expression', 'zone_id',
 /** Revision-conflict copy used after the page refreshed to the latest row version. */
 export function adminRevisionState(error: Pick<MonitorApiError, 'code'>): string {
   if (error.code === 'REVISION_CONFLICT') return '任务已被他人修改，已刷新最新版本，请重试'
-  if (error.code === 'CANDIDATE_EXPIRED') return '所选候选已过期，请重新获取候选列表后再选择'
+  if (isAdminCandidateStaleError(error)) return ADMIN_CANDIDATE_STALE_COPY
   if (error.code === 'IDENTITY_INVALID') return '监控目标身份校验未通过，请刷新后重试'
   if (error.code === 'PLAN_INVALID') return '定时计划无效，请检查 cron 表达式或时区'
   return ''

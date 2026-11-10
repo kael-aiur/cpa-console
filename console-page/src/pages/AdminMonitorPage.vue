@@ -18,6 +18,7 @@ import type {
   MonitorHistoryQuery,
 } from '@/types/monitor'
 import {
+  ADMIN_CANDIDATE_STALE_COPY,
   ADMIN_EDITABLE_FIELDS,
   adminRunDisplaySummary,
   adminRunPhaseLine,
@@ -25,8 +26,8 @@ import {
   adminTaskStateView,
   buildAdminPlanDraft,
   describeAdminPlan,
-  formatAdminCandidateExpiry,
   formatAdminRunSummaryLine,
+  isAdminCandidateStaleError,
   isAdminCronShapeValid,
   resolveAdminBlockedCopy,
 } from '@/utils/adminMonitorPageLogic'
@@ -34,7 +35,8 @@ import { formatMonitorUtcTime } from '@/utils/monitorDisplay'
 
 const tasks = ref<AdminMonitorTask[]>([])
 const candidates = ref<AdminMonitorCandidate[]>([])
-const candidatesLoadedAt = ref<number | null>(null)
+/** Server truth: a candidate goes stale only when the backend reports CANDIDATE_* 404/410. */
+const candidateStale = ref(false)
 const candidateChoices = ref<Record<string, Record<string, string>>>({})
 const candidateModels = ref<string[]>([])
 const currentCandidateModels = ref<Record<string, string>>({})
@@ -74,18 +76,14 @@ const historyAsOf = ref<number | null>(null)
 const queryState = useMonitorQueryState()
 const nowMs = ref(Date.now())
 let revisionTimer: number | undefined
-let revisionPending = false
 
 const selectedCandidate = computed(() =>
   candidates.value.find((item) => item.candidate_id === createCandidateId.value) ?? null,
 )
 
-const candidateExpiryCopy = computed(() => {
-  if (!createOpen.value || !createCandidateId.value) return ''
-  const stamp = candidatesLoadedAt.value
-  if (stamp === null) return ''
-  return formatAdminCandidateExpiry(stamp, nowMs.value)
-})
+const candidateExpiryCopy = computed(() =>
+  createOpen.value && candidateStale.value ? ADMIN_CANDIDATE_STALE_COPY : '',
+)
 
 const createModelChoices = computed(() =>
   createCandidateId.value ? candidateChoices.value[createCandidateId.value] ?? {} : {},
@@ -115,8 +113,7 @@ function refreshCandidates() {
     .then((response) => {
       candidates.value = response.data.candidates
       candidateChoices.value = response.data.model_choices
-      candidatesLoadedAt.value = Date.now()
-      nowMs.value = Date.now()
+      candidateStale.value = false
       if (!candidates.value.some((item) => item.candidate_id === createCandidateId.value)) {
         createCandidateId.value = ''
         createModelChoiceId.value = ''
@@ -135,6 +132,7 @@ function loadCandidateModels(candidateId: string) {
   createCandidateId.value = candidateId
   createModelChoiceId.value = ''
   candidateModels.value = []
+  candidateStale.value = false
   if (!candidateId) {
     currentCandidateModels.value = {}
     return
@@ -151,17 +149,28 @@ function loadCandidateModels(candidateId: string) {
     })
     .catch((error: unknown) => {
       const monitorError = normalizeMonitorError(error)
-      formError.value = monitorError.message
-      if (monitorError.code === 'CANDIDATE_NOT_FOUND') {
-        createCandidateId.value = ''
-        createModelChoiceId.value = ''
-        candidateModels.value = []
-        void refreshCandidates()
+      if (isAdminCandidateStaleError(monitorError)) {
+        candidateStale.value = true
+        clearStaleCandidateSelection()
+        formError.value = ADMIN_CANDIDATE_STALE_COPY
+        void refreshCandidates().then(() => {
+          candidateStale.value = true
+        })
+        return
       }
+      formError.value = monitorError.message
     })
     .finally(() => {
       modelsLoading.value = false
     })
+}
+
+/** Server-declared stale selection: clear it and only the dependent model state. */
+function clearStaleCandidateSelection() {
+  createCandidateId.value = ''
+  createModelChoiceId.value = ''
+  candidateModels.value = []
+  currentCandidateModels.value = {}
 }
 
 function loadTasks() {
@@ -203,7 +212,7 @@ function openCreate() {
   createCandidateId.value = ''
   createModelChoiceId.value = ''
   candidateModels.value = []
-  nowMs.value = Date.now()
+  candidateStale.value = false
   void refreshCandidates()
 }
 
@@ -227,11 +236,12 @@ async function submitCreate() {
     formError.value = '请选择受支持的候选与模型'
     return
   }
-  if (candidateExpiryCopy.value) {
+  if (candidateStale.value) {
     formError.value = candidateExpiryCopy.value
     return
   }
   saving.value = true
+  formError.value = ''
   try {
     const payload = {
       safe_name: createSafeName.value.trim(),
@@ -245,9 +255,16 @@ async function submitCreate() {
     await loadTasks()
   } catch (error: unknown) {
     const monitorError = normalizeMonitorError(error)
-    formError.value = monitorError.code === 'CANDIDATE_EXPIRED' || monitorError.code === 'CANDIDATE_NOT_FOUND'
-      ? '所选候选已过期，请重新获取候选列表后再选择'
-      : monitorError.message
+    if (isAdminCandidateStaleError(monitorError)) {
+      candidateStale.value = true
+      clearStaleCandidateSelection()
+      formError.value = ADMIN_CANDIDATE_STALE_COPY
+      void refreshCandidates().then(() => {
+        candidateStale.value = true
+      })
+      return
+    }
+    formError.value = monitorError.message
   } finally {
     saving.value = false
   }
