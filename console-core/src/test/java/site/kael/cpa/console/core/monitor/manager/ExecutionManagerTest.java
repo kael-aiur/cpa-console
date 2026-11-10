@@ -96,10 +96,10 @@ class ExecutionManagerTest {
         clock = new MutableClock(MonitorIsolationTestSupport.BASE_TIME);
         resolver = new MonitorIsolationTestSupport.FakeResolver(
                 List.of(
-                        new CpaIdentityResolver.CredentialEntry(
-                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false),
-                        new CpaIdentityResolver.CredentialEntry(
-                                "auth-z", "idx-w", "zeta.json", "codex", "codex", false, false, false)),
+                        new CpaIdentityResolver.CredentialEntryDetail(
+                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file"),
+                        new CpaIdentityResolver.CredentialEntryDetail(
+                                "auth-z", "idx-w", "zeta.json", "codex", "codex", false, false, false, null, "file")),
                 List.of("model-m", "model-n"));
         crypto = MonitorIsolationTestSupport.crypto();
         verifyClient = new CapturingClient();
@@ -159,10 +159,10 @@ class ExecutionManagerTest {
                 return java.util.List.of(
                         new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialPage(
                                 java.util.List.of(
-                                        new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry(
-                                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false),
-                                        new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntry(
-                                                "auth-z", "idx-w", "zeta.json", "codex", "codex", false, false, false)),
+                                        new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail(
+                                                "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file"),
+                                        new site.kael.cpa.console.core.monitor.manager.CpaIdentityResolver.CredentialEntryDetail(
+                                                "auth-z", "idx-w", "zeta.json", "codex", "codex", false, false, false, null, "file")),
                                 false));
             }
 

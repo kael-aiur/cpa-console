@@ -77,7 +77,7 @@ function jsonResponse(status: number, body: unknown): Response {
 
 async function main() {
   // 1. Candidate list: GET-only, snake_case payload passes through.
-  responses = [{ status: 200, body: { candidates: [{ candidate_id: 'tok-1', sequence: '1', provider: 'codex', supported: true, unsupported_reason: null, models: ['gpt-x'] }], model_choices: { 'tok-1': { 'choice-1': 'gpt-x' } } } }]
+  responses = [{ status: 200, body: { candidates: [{ candidate_id: 'tok-1', sequence: '1', display_name: 'team-a', provider: 'codex', supported: true, unsupported_reason: null, models: ['gpt-x'] }], model_choices: { 'tok-1': { 'choice-1': 'gpt-x' } } } }]
   const candidates = await fetchAdminMonitorCandidates()
   assert.equal(calls.at(-1)!.method, 'GET')
   assert.equal(calls.at(-1)!.credentials, 'include')

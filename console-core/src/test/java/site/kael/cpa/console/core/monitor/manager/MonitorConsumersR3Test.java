@@ -77,8 +77,8 @@ class MonitorConsumersR3Test {
         clock = new MutableClock(Instant.parse("2026-11-01T04:00:00Z"));
         crypto = MonitorIsolationTestSupport.crypto();
         resolver = new MonitorIsolationTestSupport.FakeResolver(
-                List.of(new CpaIdentityResolver.CredentialEntry(
-                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                 List.of("model-m"));
         validator = MonitorIsolationTestSupport.cronValidator(clock);
         // Wrapping the fake resolver keeps the read-only GET contract while asserting

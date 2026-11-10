@@ -42,8 +42,8 @@ class TaskManagerCertificatePersistenceTest {
         jdbc = MonitorIsolationTestSupport.jdbc(dataSource);
         clock = new MutableClock(Instant.parse("2026-11-07T09:17:00Z"));
         resolver = new FakeResolver(
-                List.of(new CpaIdentityResolver.CredentialEntry(
-                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false)),
+                List.of(new CpaIdentityResolver.CredentialEntryDetail(
+                        "auth-x", "idx-y", "acct.json", "codex", "codex", false, false, false, null, "file")),
                 List.of("model-m"));
         validator = MonitorIsolationTestSupport.cronValidator(clock);
         manager = new TaskManager(dataSource, MonitorIsolationTestSupport.crypto(), clock,

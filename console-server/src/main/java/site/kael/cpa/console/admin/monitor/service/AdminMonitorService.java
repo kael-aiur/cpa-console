@@ -68,7 +68,11 @@ public class AdminMonitorService {
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
-    /** D7 GET credentials: full live re-resolution; candidates from earlier listings expire. */
+    /**
+     * D7 GET credentials: full live re-resolution into a fresh short-lived listing
+     * snapshot. Earlier listings expire by identity, never by wall-clock age, so a fresh
+     * snapshot stays immediately usable until it is replaced or spent.
+     */
     public AdminCandidateListResponse candidates() {
         CpaIdentityResolver.Resolution resolution;
         try {
@@ -90,7 +94,8 @@ public class AdminMonitorService {
             choices.put(candidate.candidateId(), choiceIds);
             visible.add(AdminCandidateResponse.from(
                     candidate.candidateId(),
-                    candidate.safeSequence(),
+                    candidate.sequence(),
+                    candidate.displayName(),
                     safeProvider(candidate),
                     supported,
                     candidate.unsupportedReason() == null ? null : candidate.unsupportedReason().name(),
@@ -147,12 +152,12 @@ public class AdminMonitorService {
                 request.safe_name().trim(),
                 request.cron_expression().trim(),
                 request.zone_id().trim(),
+                cached.candidate().candidateId(),
                 cached.candidate().authId(),
                 cached.candidate().authIndex(),
                 routeModel,
                 safeModelDisplay(cached.candidate(), routeModel),
-                safeProvider(cached.candidate()),
-                null);
+                safeProvider(cached.candidate()));
         MonitorTask created;
         try {
             created = taskManager.create(create);
@@ -350,7 +355,11 @@ public class AdminMonitorService {
     }
 
     private String safeModelDisplay(CpaIdentityResolver.Candidate candidate, String routeModel) {
-        return safeProvider(candidate) + " " + routeModel;
+        String displayName = candidate.displayName() == null ? "" : candidate.displayName().trim();
+        String provider = safeProvider(candidate);
+        String base = !displayName.isBlank() && !displayName.equals(provider)
+                ? displayName : provider;
+        return base + " " + routeModel;
     }
 
     private static boolean isBlank(String value) {
