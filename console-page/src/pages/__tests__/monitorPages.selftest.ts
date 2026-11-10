@@ -17,6 +17,7 @@ import {
   formatAdminRunSummaryLine,
   adminRevisionState,
   ADMIN_EDITABLE_FIELDS,
+  adminCandidateDisplayName,
 } from '@/utils/adminMonitorPageLogic'
 import {
   MONITOR_STATE_COPY,
@@ -68,6 +69,13 @@ assert.equal(adminTaskStateView({ enabled: true, blocked_reason: null, next_fire
 const conflict = adminRevisionState({ code: 'REVISION_CONFLICT' })
 assert.equal(conflict, '任务已被他人修改，已刷新最新版本，请重试')
 assert.ok(ADMIN_EDITABLE_FIELDS.every((field) => ['safe_name', 'cron_expression', 'zone_id', 'enabled'].includes(field)))
+
+// Candidate labels stay safe and distinguishable without exposing opaque ids or indices.
+const sameNameA = { display_name: 'team', provider: 'codex', supported: true }
+const sameNameB = { display_name: 'team', provider: 'claude', supported: true }
+assert.equal(adminCandidateDisplayName(sameNameA, [sameNameA, sameNameB]), 'team · codex')
+assert.equal(adminCandidateDisplayName(sameNameB, [sameNameA, sameNameB]), 'team · claude')
+assert.equal(adminCandidateDisplayName({ display_name: '', provider: '', supported: true }, []), '受支持候选')
 
 // --- T14: state copy ---------------------------------------------------------
 assert.equal(MONITOR_STATE_COPY.SUCCESS, '成功')
